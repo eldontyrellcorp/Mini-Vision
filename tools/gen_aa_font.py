@@ -56,6 +56,11 @@ def preset(name):
         return [("S", v + "@400", 12, (32, 126), EXTRAS, 0.0, PHASES),
                 ("M", v + "@500", 15, (32, 126), EXTRAS, 0.0, PHASES),
                 ("L", v + "@600", 28, (32, 32), [ord(c) for c in L_CHARS[1:]], 0.0, PHASES_L)]
+    if name == "nvision":              # the n/vision design's pair: Chakra Petch (labels, titles), JetBrains Mono (values); both SIL OFL 1.1
+        d = FONTS.parent / "assets" / "fonts"
+        return [("S", str(d / "ChakraPetch-Medium.ttf"), 12, (32, 126), EXTRAS, 0.0, PHASES),
+                ("M", str(d / "JetBrainsMono[wght].ttf") + "@500", 14, (32, 126), EXTRAS, 0.0, PHASES),
+                ("L", str(d / "ChakraPetch-SemiBold.ttf"), 28, (32, 32), [ord(c) for c in L_CHARS[1:]], 0.0, PHASES_L)]
     if name == "standin":
         if os.path.exists(LOCAL_INTER):
             reg, med, semi = LOCAL_INTER + "#0", LOCAL_INTER + "#10", LOCAL_INTER + "#12"
@@ -231,7 +236,7 @@ def emit(face, tracking, gamma, kern_min):
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("out")
-    ap.add_argument("--preset", choices=["standin", "inter-tight"])
+    ap.add_argument("--preset", choices=["standin", "inter-tight", "nvision"])
     ap.add_argument("--face", action="append", default=[])
     ap.add_argument("--tracking", type=float, default=0.0, help="extra advance per glyph in em")
     ap.add_argument("--gamma", type=float, default=1.0, help="coverage curve; <1 thickens light-on-dark text")

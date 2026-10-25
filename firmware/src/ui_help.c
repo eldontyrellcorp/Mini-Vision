@@ -47,7 +47,7 @@ static const struct { const char *title, *hint; } HELP_PAGE[] = {
     {"SONG", "[K1]SECTION[KEYS]A-D[PLAY]SONG"},
     {"USER", "[K1]SLOT[OCT+]SAVE[SAVE]PRESETS"},
     {"PRESETS", "[K2]ENGINE[K3]FAV[K4]LIST"},
-    {"PHRASES", "[K1]PHRASE[OCT+]LOAD[SAVE]PROJECT"},
+    {"PHRASES", "[K1]PICK[OCT+]LOAD[SAVE]PROJECT"},
     {"PROJECT", "[K1]SLOT[K4]SAVE[EDIT]NAME"},
     {"TOOLS", "[K1]CLEAR[K2]INIT SOUND[OCT+]DO"},
     {"ARP", "[K1]MODE[KEYS]CHORD[ARP]ARP 2"},

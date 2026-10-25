@@ -288,10 +288,28 @@ static int head_slot(char *b)
     return 1;
 }
 /* the octave, or the song row while a song plays, its right end at HEAD_GRP_R */
+/* the voices sounding, across the parts (the header's POLY n/8, as the n/vision's POLY n/40) */
+static uint32_t poly_count(void)
+{
+    uint32_t p, i, n = 0;
+    for (p = 0; p < NPART; p++)
+        for (i = 0; i < NVOICE; i++)
+            n += trk[p].v[i].active != 0u;
+    return n > NVOICE ? NVOICE : n;
+}
 static void head_group(void)
 {
     char b[8];
     int32_t x;
+    if (!chain.running && !song.octave) {
+        char pb[16];
+        str_cpy(pb, "POLY ", sizeof pb);
+        fmt_int(pb + 5, (int32_t)poly_count());
+        str_cpy(pb + str_len(pb), "/8", 4);
+        GFX_HOOK_ALIGN(0, 0, 0, H_HEAD, AL_V, "header text on its middle");
+        cv_text(HEAD_GRP_R - text_w(&AF_S, pb), HEAD_SY, &AF_S, pb, T_MID);
+        return;
+    }
     if (chain.running) {
         fmt_int(b, (int32_t)chain.row + 1);
         x = HEAD_GRP_R - (16 + 4 + text_w(&AF_M, b));
@@ -320,7 +338,7 @@ static void draw_head(void)
                    (ui.msg_t ? str_hash(7u, ui.msg) : ui.layer * 7919u + (uint32_t)layer_locked() * 3u) + (uint32_t)song.g[G_BPM] * 101u + (ui.bpm_t != 0) * 31u +
                    (uint32_t)seq_counting() * 7u + (ui_prefs & PREF_BPM_LOCK) * 4099u +
                    (uint32_t)batt_shown() * 7777u + (chain.running ? (chain.row + 1u) * 104729u : 0u) +
-                   (slot ? str_hash(11u, sl) : 0u);
+                   (slot ? str_hash(11u, sl) : 0u) + poly_count() * 6151u;
     int msg = ui.msg_t || ui.layer;
     int centre = !msg || ui.bpm_t || ui.layer == LAYER_GLO;   /* the BPM being changed: it stays, the message right */
     int32_t rx = HEAD_REC_X;
@@ -390,7 +408,7 @@ static void draw_head(void)
     } else {
         head_msg(-1, HEAD_MSG_W);
     }
-    if (!msg && (chain.running || song.octave))
+    if (!msg)
         head_group();
     if (!(msg && centre))
         draw_battery(HEAD_BAT_X);
