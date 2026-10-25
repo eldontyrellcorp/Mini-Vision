@@ -7,9 +7,15 @@ A fork of [Mini-Tone](https://github.com/) 1.0.4 (GPL-3.0-only) that is becoming
   levels, 8 bit: `tools/gen_nvision_wt.py` makes them at build time, 252 kB), one POSITION through the frames, MIX and OCT2 between the
   layers, RANGE, a sine-fold wave shaper (WS), phase modulation (PM), the voice filter (TYPE LP12 BP12 HP12, LP24 BP24 HP24 and three ladder low passes after a Roland, a Moog and a Sequential: LP.R LP.M LP.S; CUT, RES, KEY; DRIVE 0..3 on FILTER 2), an oscillator
   AD envelope that moves the position and the mix (OSC ENV), and the track's ENV / LFO / matrix pages on top. Its EDIT pages draw the two
-  waveforms. 16 presets. `tests/wt_test.c` checks it. The app slot is 566.3 kB of 581.6: **15.3 kB left**.
+  waveforms. 16 presets. `tests/wt_test.c` checks it. The app slot is 568.7 kB of 581.6: **12.9 kB left**.
   Not yet (n/vision has them): the HPF, the wave shaper's tables, P-MOD's X / Y,
   the step LFO, the drawing mode, SPREAD, the EQ, the MFX chorus effects, 56 voices (8 here).
+- **The interface follows the n/vision GUI design** (`docs/` has none yet): the NVISION palette (dark, cyan / pink / yellow / green) and the
+  LINE style by default, the graph panel on top and the four knob cards at the bottom, Chakra Petch (labels, titles) and JetBrains Mono
+  (values), both SIL OFL (`assets/fonts/`, `tools/gen_aa_font.py --preset nvision`), a header with POLY n/8. HOME is the PERFORM view (patch,
+  frame stack, layers, filter chip; MENU > HOME: PERFORM TRACKS LEVELS SCOPE). WTSYNTH's pages draw two layer boxes with a frame ruler, the
+  wave shaper's curve, the oscillator envelope, the filter's response with its type chips and the drive; ADSR handles, LFO shape chips, an FX
+  chain. SEQ pages: STEP, STEP 2 (STEP VEL PROB RATCH), PATTERN (LEN DIV SWG GATE), AUTOMATION, MOTION (the recorded parameters as lanes), STOCH.
 - **Every other engine of Mini-Tone is gone but TR808.** The engine numbers are kept (the stores and the editor protocol name engines by
   index): the removed ones are `ENG_GONE` entries that play silence, TR808 is still engine 24. The image was 306 kB before WTSYNTH (571 kB in Mini-Tone).
 - **FM6's room in the project format is kept** (`FM6_PACKED`, 128 bytes a track, zeros): the stored formats keep their sizes; it is free

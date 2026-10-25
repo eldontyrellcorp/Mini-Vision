@@ -1306,6 +1306,13 @@ static void edit_param(uint32_t slot, int32_t steps)
         ev_knob(slot, steps);
         return;
     }
+    if (pg->graph == GR_MOTION) {                         /* MOTION: KNOB 1 the lane picked */
+        uint8_t ids[4];
+        uint32_t n = mo_lanes(TSEL, ids);
+        if (slot == 0u && n)
+            motion_lane = (uint8_t)clamp((int32_t)(motion_lane % n) + steps, 0, (int32_t)n - 1);
+        return;
+    }
     if (pg->graph == GR_SONG) {                       /* KNOB 1 SECTION, 2 TRACK, 3 PAT (A..D, -), 4 REPS */
         chain_row_t *r;
         if (slot == 0u) {

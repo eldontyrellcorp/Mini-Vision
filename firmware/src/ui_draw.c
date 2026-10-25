@@ -1181,6 +1181,29 @@ static void draw_columns(void)
         draw_column(3, "ACC", ac ? "ON" : "--", "", ac ? VAL(3u) : T_DIM, -1, ICON_AUTO);
         return;
     }
+    if (cur_page()->graph == GR_MOTION) {                 /* MOTION: LANE, its parameter, its records, its locks */
+        uint8_t ids[4];
+        uint32_t n = mo_lanes(TSEL, ids), l = n ? motion_lane % n : 0u, ev = 0, lk = 0, i, k = trk_index(TSEL);
+        char a[8], b[8];
+        const param_desc_t *d = n ? track_desc(TSEL, ids[l]) : 0;
+        for (i = 0; n && i < motion.count; i++)
+            if ((motion.event[i].place >> 6) == k && MOTION_ID(&motion.event[i]) == ids[l]) {
+                if (motion.event[i].param & MOTION_LOCK)
+                    lk++;
+                else
+                    ev++;
+            }
+        fmt_int(a, (int32_t)l + 1);
+        str_cpy(b, "/", 8);
+        fmt_int(b + 1, (int32_t)n);
+        draw_column(0, "LANE", n ? a : "--", n ? b : "", n ? VAL(0u) : T_DIM, -1, ICON_AUTO);
+        draw_column(1, "PARAM", d && d->label ? d->label : "--", "", n ? VAL(1u) : T_DIM, -1, ICON_AUTO);
+        fmt_int(a, (int32_t)ev);
+        draw_column(2, "EVENTS", n ? a : "--", "", n ? VAL(2u) : T_DIM, -1, ICON_AUTO);
+        fmt_int(a, (int32_t)lk);
+        draw_column(3, "LOCKS", n ? a : "--", "", n ? VAL(3u) : T_DIM, -1, ICON_AUTO);
+        return;
+    }
     if (cur_page()->graph == GR_STEP2) {                  /* STEP 2: STEP VEL PROB RATCH */
         const step_t *st = &seq_steps(TSEL)[ui.cursor];
         char sn[8], sl[8];

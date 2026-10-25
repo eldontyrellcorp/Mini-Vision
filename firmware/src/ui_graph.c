@@ -12,6 +12,7 @@
 #define GOY 11                                       /* graphs drawn on a 100 px scale sit at y 11..111 */
 /* the height ADSR and LFO are drawn on: 100 px, or (MENU > LARGE's strip: draw_graph) the strip's ~ 56 */
 static int32_t graph_ht = 100;
+static uint8_t motion_lane;                          /* MOTION: the lane picked (KNOB 1) */
 
 /* Matches voice.c: attack is linear, decay and release are exponential
  * (env += (target - env) * k each tick, ~99 % after the set time). Time
@@ -256,9 +257,9 @@ static void graph_roll(const track_t *t, uint16_t c)
         uint32_t si = base + i;
         int32_t x = PR_X0 + (int32_t)i * cw;
         if (si == ui.cursor)
-            cv_frame(x, PR_Y0 - 2, cw + 1, ybot - PR_Y0 + 4, T_TEXT);
+            cv_frame(x, PR_Y0 - 2, cw + 1, ybot - PR_Y0 + 4, T_ACCENT);
         if (song.playing && si == t->seq_idx)
-            cv_rect(x + cw / 2, PR_Y0, 1, ybot - PR_Y0, T_ACCENT);
+            cv_rect(x + cw / 2, PR_Y0, 1, ybot - PR_Y0, T_OK);
         if ((locks >> si) & 1u)                       /* a parameter lock: a mark under the step */
             cv_rect(x + (cw > 7 ? (cw - 7) / 2 : 0), ybot + 3, cw > 7 ? 7 : cw - 1, 2, T_ACCENT);
     }
@@ -1054,6 +1055,8 @@ static uint32_t graph_signature(void)
 #if FELUCCA_SLICE
     if (pg->graph == GR_SLICES && slice_page_ok()) h ^= slice_sig();
 #endif
+    if (pg->graph == GR_MOTION)
+        h = fnv(h ^ motion_lane * 977u ^ motion.count, motion.event, motion.count * (uint32_t)sizeof motion.event[0]);
     if (pg->graph == GR_STEP2)
         h = (h ^ ui.cursor * 7919u ^ ui.bank) * 16777619u + fnv(0, &seq_steps(t)[ui.cursor], sizeof(step_t));
     if (pg->graph == GR_STEPS)
@@ -2297,6 +2300,68 @@ static void graph_pattern(const track_t *t)
     cv_rect(64, 84, 165, 1, T_RAISE);
 }
 
+/* MOTION (the n/vision motion lanes): the parameters the track's automation and locks move, up to four lanes by id, each as a line
+ * over the pattern (a value holds until the next record; a lock a dot), the picked lane (KNOB 1) yellow */
+static uint32_t mo_lanes(const track_t *t, uint8_t *ids)      /* the distinct parameter ids of the track's records, in id order: n <= 4 */
+{
+    uint32_t i, j, n = 0, k = trk_index(t);
+    for (i = 0; i < motion.count; i++) {
+        uint32_t id = MOTION_ID(&motion.event[i]);
+        if ((motion.event[i].place >> 6) != k)
+            continue;
+        for (j = 0; j < n && ids[j] != id; j++)
+            ;
+        if (j == n && n < 4u)
+            ids[n++] = (uint8_t)id;
+    }
+    for (i = 1; i < n; i++)                                    /* (insertion sort) */
+        for (j = i; j > 0 && ids[j - 1] > ids[j]; j--) {
+            uint8_t x = ids[j];
+            ids[j] = ids[j - 1];
+            ids[j - 1] = x;
+        }
+    return n;
+}
+static void graph_motion(const track_t *t)
+{
+    uint8_t ids[4];
+    uint32_t n = mo_lanes(t, ids), len = (uint32_t)clamp(t->p[P_SLEN], 1, NSTEP), l;
+    if (!n) {
+        cv_text_on(8, 50, &AF_M, "NO MOTION", T_MID, T_SURF);
+        cv_text_on(8, 72, &AF_S, "REC + TURN A KNOB, OR LOCK A STEP", T_MID, T_SURF);
+        return;
+    }
+    for (l = 0; l < n; l++) {
+        const param_desc_t *d = track_desc(t, ids[l]);
+        int32_t y0 = 6 + (int32_t)l * 29, h = 22, lo = d ? d->min : 0, hi = d && d->max > d->min ? d->max : 127, prev = 0, have = 0, px = 0, py = 0, x;
+        uint16_t col = l == motion_lane % n ? T_ACCENT : l == 1u ? T_THEME : l == 2u ? T_L2 : T_MID;
+        uint32_t s;
+        cv_rect(8, y0 + h + 2, 224, 1, T_RAISE);
+        cv_text_on(8, y0 - 3, &AF_S, d && d->label ? d->label : "?", col, T_SURF);
+        for (s = 0; s < len; s++) {
+            int32_t i = motion_find(t, s, ids[l]), v;
+            if (i >= 0) {
+                v = motion.event[i].value;
+                prev = clamp(v, lo, hi);
+                have = 1;
+            }
+            if (!have)
+                continue;
+            x = 56 + (int32_t)(s * 176u / len);
+            v = y0 + h - (clamp(prev, lo, hi) - lo) * h / (hi - lo);
+            if (px)
+                cv_line_t(px, py, x, py, col, 1);               /* the hold, then the step */
+            if (px)
+                cv_line_t(x, py, x, v, col, 1);
+            px = x;
+            py = v;
+            if (i >= 0)
+                cv_rect(x - 1, v - 1, 3, 3, (motion.event[i].param & MOTION_LOCK) ? T_L2 : T_TEXT);
+        }
+        if (px)
+            cv_line_t(px, py, 232, py, col, 1);
+    }
+}
 static void sound_name(const track_t *t, char *b);
 /* HOME > PERFORM (the n/vision look): the patch number and name, the engine line, the layers' frame stack with the frame at
  * POSITION lit (layer 2 overlaid), the layer bar and a row of chips */
@@ -2401,6 +2466,10 @@ static void draw_graph(void)
                 graph_roll(t, c);
             if (ui.sheet)
                 graph_sheet(t);
+            break;
+        case GR_MOTION:
+            cv_oy = 0;
+            graph_motion(t);
             break;
         case GR_STEP2:
             cv_oy = 0;

@@ -656,7 +656,7 @@ enum { S_HOME, S_HOME_IDLE, S_MESSAGE, S_MESSAGE_KEY, S_PRESETS, S_PRESETS_NOFAV
        S_ENV_SYNC, S_ENV_DEST_SYNC, S_FILTER,
        S_LEARN_WAIT, S_LEARN_PICK, S_LEARN_SET, S_LEARN_LONG, S_GLO_LEARN, S_MENU_LCLEAR, S_MENU_LCLEAR_NONE, S_REVERB_ELEK, S_REVERB_ELEK2,
        S_ROLL_SHEET, S_ROLL_SHEET_FORCE, S_ROLL_SHEET_NONE, S_ROLL_SHEET_CHORD, S_ROLL_SHEET_LAST, S_ROLL_ZOOM8, S_ROLL_ZOOM32,
-       S_ROLL_ZOOM64, S_DRUM_SHEET, S_DRUM_SHEET_LAST, S_GLO_FILL, S_GLO_FILL_ARMED, S_HOME_TRACKS_SECTION, S_HOME_T6, S_MIXER_T6, S_SONG_SIX, S_WT_EDIT1, S_WT_EDIT2, S_WT_OSCENV, S_WT_FILTER, S_WT_FILTER2, S_STEP2, S_PATTERN, S_COUNT };
+       S_ROLL_ZOOM64, S_DRUM_SHEET, S_DRUM_SHEET_LAST, S_GLO_FILL, S_GLO_FILL_ARMED, S_HOME_TRACKS_SECTION, S_HOME_T6, S_MIXER_T6, S_SONG_SIX, S_WT_EDIT1, S_WT_EDIT2, S_WT_OSCENV, S_WT_FILTER, S_WT_FILTER2, S_STEP2, S_PATTERN, S_LANES, S_COUNT };
 static const char *const S_NAME[S_COUNT] = {"home", "home_idle", "message", "message_key", "presets", "presets_nofav", "user",
     "phrases", "project", "tools", "song_empty", "song", "step", "auto_steps", "auto_add_chance", "automation", "drum",
     "drum_hand", "drum_cym", "mixer", "mixer_from_home", "mixer_pan", "env", "env_dest", "lfo", "mod", "fx", "slicer", "dly", "scl", "chord", "chord_wide", "chord_off", "chord_kit", "arp",
@@ -682,7 +682,7 @@ static const char *const S_NAME[S_COUNT] = {"home", "home_idle", "message", "mes
     "insert_crush", "insert_fold", "insert_phaser", "insert_off", "insert_mix",
     "env_sync", "env_dest_sync", "filter",
     "learn_wait", "learn_pick", "learn_set", "learn_long", "layer_glo_learn", "menu_learn_clear", "menu_learn_clear_none", "reverb_elek", "reverb_elek2", "roll_sheet", "roll_sheet_force", "roll_sheet_none", "roll_sheet_chord", "roll_sheet_last", "roll_zoom8", "roll_zoom32",
-    "roll_zoom64", "drum_sheet", "drum_sheet_last", "layer_glo_fill", "layer_glo_fill_next", "home_tracks_section", "home_track6", "mixer_track6", "song_six", "wt_edit1", "wt_edit2", "wt_oscenv", "wt_filter", "wt_filter2", "step2", "pattern"};
+    "roll_zoom64", "drum_sheet", "drum_sheet_last", "layer_glo_fill", "layer_glo_fill_next", "home_tracks_section", "home_track6", "mixer_track6", "song_six", "wt_edit1", "wt_edit2", "wt_oscenv", "wt_filter", "wt_filter2", "step2", "pattern", "lanes"};
 
 /* the STEP page's piano roll (ui_graph.c graph_roll) on track 1, stopped unless said: an empty pattern; ACID in
  * A minor; POLY chords (Am7 F C G, tied); a line with ties, slides and accents in C major; LEN 32 on its second
@@ -852,6 +852,9 @@ static void setup(int s)
         chain_config.row[0] = chain_row_of(0, 2); chain_config.row[1] = chain_row_of(1, 4); chain_config.row[2] = chain_row_of(2, 1);
         ui.song_row = 1; go_page(GR_SONG); sg_fresh(); chain_prepare(); events_block(32);
         break;
+    case S_LANES: eng(ENGI_WT); TSEL->p[P_SLEN] = 16; motion_set_event(TSEL, 0, P_E2, 10); motion_set_event(TSEL, 4, P_E2, 60); motion_set_event(TSEL, 9, P_E2, 100);
+        motion_set_event(TSEL, 0, P_E3, 20); motion_set_event(TSEL, 6, P_E3, 90); motion_set_lock(TSEL, 11, P_E3, 30); motion_set_event(TSEL, 2, P_REV, 40); motion_set_event(TSEL, 12, P_REV, 100);
+        go_title("MOTION"); break;
     case S_STEP2: eng(ENGI_WT); song.rec = 1; TSEL->step[6].n = 3; TSEL->step[6].note[0] = 53; TSEL->step[6].note[1] = 57; TSEL->step[6].note[2] = 60;
         TSEL->step[6].time = ST_NOTE; TSEL->step[6].vel = 100; step_set_chance(&TSEL->step[6], 75); step_set_ratchet(&TSEL->step[6], 2);
         go_page(GR_STEP2); ui.cursor = 6; break;

@@ -497,7 +497,7 @@ enum { SC_TRACK, SC_GLOBAL, SC_ENGINE, SC_STEP, SC_TRK, SC_REVX, SC_STOCH };   /
                                                                      * SC_REVX: the ELEK reverb's values (rvx_p) */
 enum { GR_NONE, GR_ADSR, GR_LFO, GR_STEPS, GR_ARP, GR_SCALE, GR_FX, GR_ROLL, GR_BROWSE, GR_SLOTS, GR_USER, GR_TRK,
        GR_SLCR, GR_MOD, GR_PATS, GR_SONG, GR_TOOLS, GR_CHORD, GR_SLICES, GR_EVENTS,
-       GR_FMOP, GR_FMOP2, GR_FMENV, GR_INS, GR_REVX, GR_STOCH, GR_STEP2 };   /* (GR_STEPS: SEQ TOOLS' knobs; GR_FMOP..: FM6's operator pages, ui_fm6op.c) */
+       GR_FMOP, GR_FMOP2, GR_FMENV, GR_INS, GR_REVX, GR_STOCH, GR_STEP2, GR_MOTION };   /* (GR_STEPS: SEQ TOOLS' knobs; GR_FMOP..: FM6's operator pages, ui_fm6op.c) */
 
 typedef struct {
     const char *title;
@@ -596,6 +596,7 @@ static const page_t PAGES[] = {
     {"PATTERN", FAM_SEQ, SC_TRACK, GR_STEPS, {P_SLEN, P_SDIV, P_SSWING, P_SGATE}},   /* the pattern's setup (n/vision): LEN DIV SWG GATE */
     {"AUTOMATION", FAM_SEQ, SC_TRACK, GR_EVENTS, {0xFF, 0xFF, 0xFF, 0xFF}},  /* the locks, events, CHANCE and RATCH as a
                                                                              * list, PLAY and CLEAR (ui_events.c) */
+    {"MOTION", FAM_SEQ, SC_TRACK, GR_MOTION, {0xFF, 0xFF, 0xFF, 0xFF}},   /* the track's recorded parameters as lanes (n/vision's motion lanes) */
     /* STOCHASTIC mode (after the OXI ONE's; core.h stoch_t, ui_input.c stoch_edit): MODE DENS GROOVE LOOP; NOTE WEIGHT OCT
      * RANGE; VMIN VMAX RAT SLD; STACK SEED */
     {"STOCH", FAM_SEQ, SC_STOCH, GR_STOCH, {0xFF, 0xFF, 0xFF, 0xFF}},

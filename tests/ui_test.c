@@ -2320,7 +2320,7 @@ static int test_page_cycles(void)
     for (i = 0; i < NPAGES; i++) {                       /* every page in a family its button reaches, and its LED */
         uint32_t f = PAGES[i].fam;
         ok &= f != FAM_SEQ || PAGES[i].graph == GR_ROLL || PAGES[i].graph == GR_EVENTS ||
-                           PAGES[i].graph == GR_STOCH || PAGES[i].graph == GR_STEP2 || PAGES[i].graph == GR_STEPS;
+                           PAGES[i].graph == GR_STOCH || PAGES[i].graph == GR_STEP2 || PAGES[i].graph == GR_STEPS || PAGES[i].graph == GR_MOTION;
         ok &= f != FAM_GLO || PAGES[i].graph == GR_SONG;   /* (1.2: GLO's only page) */
         ok &= f != FAM_TRK || PAGES[i].graph == GR_TRK || str_eq(PAGES[i].title, "CLOCK");   /* HOME's: MIXER CLOCK */
         ok &= PAGES[i].graph != GR_TRK || f == FAM_TRK;
@@ -2330,7 +2330,7 @@ static int test_page_cycles(void)
     }
     for (i = 0; i < NPAGES; i++)
         ok &= !str_eq(PAGES[i].title, "CHANCE") && !str_eq(PAGES[i].title, "AUTO LIST");
-    bad += check("1.2: SEQ has STEP, STEP 2, PATTERN, AUTOMATION and the five STOCH pages only; SONG is GLO's only page, PHRASES SAVE's, MIXER and CLOCK HOME's "
+    bad += check("1.2: SEQ has STEP, STEP 2, PATTERN, AUTOMATION, MOTION and the five STOCH pages only; SONG is GLO's only page, PHRASES SAVE's, MIXER and CLOCK HOME's "
                  "(their LED HOME)", ok);
     {   /* 1.2: GLOBAL and SYSTEM are gone; their knobs: BPM SWG CLK on HOME > CLOCK, TUNE and ROUT on no page (the MENU's),
          * MIDI SYNC CPU on none (INFO shows the USB state and the CPU) */
@@ -5783,6 +5783,8 @@ static int test_seq_tools(void)
     ok &= cur_page()->graph == GR_STEPS;
     press(B_SEQ); frames(320);
     ok &= cur_page()->graph == GR_EVENTS && str_eq(cur_page()->title, "AUTOMATION") && msg_is("HOLD [SEQ] QUICK");
+    press(B_SEQ); frames(320);
+    ok &= cur_page()->graph == GR_MOTION;
     for (k = 0; k < 1u; k++) {                          /* STOCH (MODE OFF: its other pages are hidden) */
         press(B_SEQ); frames(320);
         ok &= cur_page()->graph == GR_STOCH;
@@ -6160,6 +6162,7 @@ static int test_layer_lock(void)
     press(B_SEQ); frames(400);
     press(B_SEQ); frames(400);
     ok &= str_eq(cur_page()->title, "AUTOMATION") && !ui.lock && !ui.layer;
+    press(B_SEQ); frames(400);
     press(B_SEQ);
     btn_down(B_SEQ); frames(500);
     ok &= ui.layer == LAYER_SEQ && !ui.lock;
