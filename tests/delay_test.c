@@ -23,7 +23,7 @@ static void setup(uint32_t div, uint32_t bpm, uint32_t fdbk)
     memset(dly_buf, 0, sizeof dly_buf);
     memset(&fx, 0, sizeof fx);
     host_tracks_init();
-    host_preset(&trk[0], 18, 0);   /* SID */
+    host_preset(&trk[0], ENGI_TESTSYNTH, 0);
     trk[0].p[P_DLY] = 127;
     trk[0].p[P_CHOR] = trk[0].p[P_REV] = 0;
     trk[0].p[P_ATK] = 0;

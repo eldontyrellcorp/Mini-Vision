@@ -317,38 +317,7 @@ static void proj_phys(project_t *q)
  * over to FM6's macros. Idempotent */
 static void proj_fm4(project_t *q)
 {
-#if !FELUCCA_FM4
-    uint32_t k, i, n, hit = 0;
-    for (k = 0; k < NTRK; k++) {
-        proj_trk_t *d = &q->t[k];
-        uint8_t v[FP_SIZE + 1u];
-        uint32_t pr;
-        if (d->engine != ENGI_DIGITAL)
-            continue;
-        for (i = 0; i < P_COUNT; i++)
-            d->p[i] = (int16_t)clamp(d->p[i], param_desc_of(ENGI_DIGITAL, i)->min, param_desc_of(ENGI_DIGITAL, i)->max);
-        pr = fm4_convert(d->p, v);
-        fm6_pack(v, q->fm6[k]);
-        d->engine = ENGI_FM6;
-        if (d->preset < PROJ_DEF_KEEP)
-            d->preset = (uint8_t)pr;
-        hit |= 1u << k;
-    }
-    if (!hit)
-        return;
-    for (i = n = 0; i < q->motion.count && i < MOTION_MAX; i++) {
-        const motion_event_t *e = &q->motion.event[i];
-        if (((hit >> (e->place >> 6)) & 1u) && (MOTION_ID(e) >= P_E0 || (MOTION_ID(e) >= P_FM1_ATK && MOTION_ID(e) <= P_FM4_LEVEL)))
-            continue;
-        q->motion.event[n++] = *e;
-    }
-    for (i = n; i < q->motion.count && i < MOTION_MAX; i++)
-        memset(&q->motion.event[i], 0, sizeof q->motion.event[i]);
-    q->motion.count = (uint8_t)n;
-    q->sum = proj_sum(q);
-#else
-    (void)q;
-#endif
+    (void)q;                                            /* (mini-vision: no DIGITAL tracks) */
 }
 
 /* SAMPLE tracks of the retired PERC set (SET 4) -> DRUM with its default kit (see the top; core.h drum_from_perc,
@@ -1033,9 +1002,9 @@ static int projx1_merge(project_t *q, const project_x1_t *x)
 static void proj_legacy_drums(track_t *t)
 {
     static const uint8_t FX_DEF[4] = {0, 24, 28, 36};
-    const preset_t *pr = &ENGINES[ENGI_DRUM]->presets[0];
+    const preset_t *pr = &ENGINES[ENGI_TR808]->presets[0];
     uint32_t i;
-    t->eng_req = ENGI_DRUM;
+    t->eng_req = ENGI_TR808;
     t->preset = 0;
     for (i = 0; i < P_E0; i++)
         if (!param_kept(i))
@@ -1178,7 +1147,6 @@ static void project_capture(project_t *p)
         p->t[i].preset = trk[i].preset;
         memcpy(p->t[i].step, trk[i].step, sizeof trk[i].step);
         p->stoch[i] = trk[i].stoch;
-        fm6_pack(fm6_patch[i], p->fm6[i]);
     }
     p->motion = motion;
     motion_unguard(f);
@@ -1357,12 +1325,6 @@ static int project_restore_runtime(const project_t *input)
         proj_steps(t->step);
         t->stoch = p->stoch[k];                         /* (zeros: the defaults, OFF) */
         stoch_bound(&t->stoch);
-        {   /* the project's own FM6 patch, never reloaded from SLOT: F n if it is that factory patch, else OWN */
-            uint8_t v[FP_SIZE + 1u];
-            fm6_unpack(p->fm6[k], v);
-            fm6_set_patch(k, v);
-            fm6_adopt(k);
-        }
     }
     song.sel = (uint8_t)(p->sel < NTRK ? p->sel : 0u);
     fm1_irq_on();
@@ -1582,7 +1544,6 @@ static uint32_t autosave_sig(void)
         h = as_mix(h, &t->eng_req, 1);
         h = as_mix(h, &t->preset, 1);
         h = as_mix(h, t->step, sizeof t->step);
-        h = as_mix(h, fm6_patch[i], sizeof fm6_patch[i]);
     }
     for (i = 0; i < G_COUNT; i++)
         if (i != G_SLOT && i != G_NAME && i != G_LOAD && i != G_SAVE)

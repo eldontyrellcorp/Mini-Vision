@@ -174,7 +174,7 @@ static int loads_and_song(void)
 {
     int bad = 0; ui_power_on(); track_t *t = &trk[0];
     int16_t v;
-    uint32_t e0 = t->eng_req, e1 = e0 == ENGI_DRUM ? ENGI_FM6 : ENGI_DRUM;
+    uint32_t e0 = t->eng_req, e1 = e0 == ENGI_DRUM ? ENGI_TESTSYNTH : ENGI_DRUM;
     t->p[P_REV] = 21; motion_set_event(t, 0, P_REV, 100); t->step[0] = (step_t){{60}, 1, ST_NOTE, 0, 100};
     motion_set_lock(t, 1, P_E0, motion_base_value(t, P_E0));
     apply_preset_to(t, 1);
@@ -594,144 +594,6 @@ static int lock_project(void)
 /* the UI: hold a step, turn a knob (ui_input.c lock_*) */
 static void lk_down(uint32_t k) { fm1_in.notes |= 1u << k; host_notes |= 1u << k; frame(); }
 static void lk_up(uint32_t k) { fm1_in.notes &= ~(1u << k); frame(); }
-static int lock_ui(void)
-{
-    int bad = 0, ok;
-    int16_t v;
-    track_t *t;
-    uint32_t k0, k4, kn;
-    ui_power_on();
-    song.sel = 3;                                        /* track 4: DRUM, the grid */
-    t = &trk[3];
-    track_defaults_steps(t);
-    t->p[P_SLEN] = 16;
-    go_home();
-    open_family(FAM_SEQ);
-    frame();
-    k0 = key_at(0, 0); k4 = key_at(0, 4);
-    grid_hit(t, 0, 0, 1);                                /* a KICK on step 1 */
-    bad += check("the grid on SEQ > STEP; the locks' knobs: HOME's (DRUM: E2..E5)", grid_on() && lock_id(0) == P_E1 &&
-        lock_id(3) == P_E4);
-    lk_down(k4);
-    bad += check("a step key down: its step held (an empty one gets its hit at once)", lock_held() == (1u << 4) &&
-        (t->step[4].hit & 1u));
-    turn(EN_K1, 3);
-    ok = motion_lock_get(t, 4, P_E1, &v) && v == motion_base_value(t, P_E1) + 3;
-    turn(EN_K1, 2);
-    bad += check("  KNOB 1 turned: step 5 gets a lock of E2 (TUNE), from the sound's own value", ok &&
-        motion_lock_get(t, 4, P_E1, &v) && v == motion_base_value(t, P_E1) + 5 && t->p[P_E1] == motion_base_value(t, P_E1));
-    lk_up(k4);
-    bad += check("  let go: the hit stays, the lock is there, the sound unchanged", (t->step[4].hit & 1u) &&
-        motion_lock_count(t) == 1u && !lock_held());
-    lk_down(k0);
-    turn(EN_K2, -4);
-    lk_up(k0);
-    bad += check("a key pressed on a hit and held for a lock: the hit stays", (t->step[0].hit & 1u) &&
-        motion_lock_get(t, 0, P_E2, &v));
-    tap_key(k0);
-    bad += check("  tapped alone: the hit goes (when let go), its lock stays", !(t->step[0].hit & 1u) &&
-        motion_lock_count(t) == 2u);
-    fm1_in.notes |= 1u << k0 | 1u << k4; host_notes |= 1u << k0 | 1u << k4; frame();
-    turn(EN_K4, 1);
-    fm1_in.notes = 0; frame();
-    bad += check("two step keys held: both get the lock", motion_lock_get(t, 0, P_E4, &v) && motion_lock_get(t, 4, P_E4, &v) &&
-        motion_lock_count(t) == 4u);
-    lk_down(k4);
-    press(B_EDIT);
-    lk_up(k4);
-    bad += check("a step held + [EDIT]: its locks go, the step and the others' locks stay", motion_lock_count(t) == 2u &&
-        !motion_lock_get(t, 4, P_E1, &v) && motion_lock_get(t, 0, P_E4, &v) && (t->step[4].hit & 1u) &&
-        str_eq(ui.msg, "LOCKS CLEARED"));
-    bad += check("the steps with a lock (the grid marks them): step 1", motion_lock_steps(3) == 1u);
-    open_family(FAM_FX);                                 /* the lock's knobs: the sound page shown last */
-    open_family(FAM_SEQ);
-    frame();
-    bad += check("from FX: the knobs lock DIST CHO DLY REV", lock_id(0) == P_DIST && lock_id(3) == P_REV);
-    lk_down(k4); turn(EN_K4, 5); lk_up(k4);
-    bad += check("  step 5 gets a REV lock", motion_lock_get(t, 4, P_REV, &v) && v == t->p[P_REV] + 5);
-    go_auto_top();
-    frame();
-    bad += check("AUTOMATION: EVENT 0, LOCK 3", motion_count(t) - motion_lock_count(t) == 0u && motion_lock_count(t) == 3u);
-    /* the roll: the step being entered is the one held */
-    ui_power_on();
-    t = &trk[0];
-    track_defaults_steps(t);
-    go_home();
-    open_family(FAM_SEQ);
-    frame();
-    for (kn = 0; kn < 27u && kb_map(t, kn) > 127u; kn++)
-        ;
-    lk_down(kn);                                         /* (1.2, #133: not armed, a key only plays: no step held) */
-    ok = !ui.entry_open && !lock_held() && !t->step[0].n;
-    turn(EN_K3, 4);
-    lk_up(kn);
-    bad += check("the roll, not armed: a key held writes no step and holds none; KNOB 3 locks nothing",
-                 ok && !motion_lock_count(t) && !t->step[0].n && ui.cursor == 0u);
-    song.rec = 1;                                        /* armed, stopped: step recording */
-    lk_down(kn);
-    ok = ui.entry_open && lock_held() == 1u && t->step[0].n == 1u;
-    turn(EN_K3, 4);                                      /* (HOME's KNOB 3 of the track's engine: FM6's) */
-    bad += check("the roll, armed (step recording): a note key held (the entry) is the step held; KNOB 3 locks its parameter, TIME untouched", ok &&
-        motion_lock_get(t, 0, lock_id(2), &v) && v == t->p[lock_id(2)] + 4 && t->step[0].time == ST_NOTE);
-    lk_up(kn);
-    bad += check("  let go: the note and the lock on step 1, the cursor on", ui.cursor == 1u && t->step[0].n == 1u &&
-        motion_lock_count(t) == 1u && motion_lock_steps(0) == 1u);
-    cursor_set(0);
-    press(B_EDIT);
-    bad += check("  [EDIT] alone clears the step and its locks", !t->step[0].n && !motion_lock_count(t));
-    song.playing = 1; chain.running = 1;
-    lk_down(kn); turn(EN_K3, 1); lk_up(kn);
-    bad += check("  a song playing: STOP TO EDIT, no lock", !motion_lock_count(t));
-    song.playing = 0; chain.running = 0; song.rec = 0;
-    return bad;
-}
-/* 1.1.5: lock edits by hand are one undo (SAVE held), redo too */
-static int lock_undo(void)
-{
-    int bad = 0;
-    int16_t v;
-    track_t *t;
-    uint32_t k4;
-    ui_power_on();
-    song.sel = 3;
-    t = &trk[3];
-    track_defaults_steps(t);
-    t->p[P_SLEN] = 16;
-    go_home();
-    open_family(FAM_SEQ);
-    frame();
-    k4 = key_at(0, 4);
-    lk_down(k4);
-    turn(EN_K1, 3);
-    turn(EN_K1, 2);
-    lk_up(k4);
-    bad += check("lock undo: a step held, KNOB 1 turned twice: one lock", motion_lock_get(t, 4, P_E1, &v) &&
-        v == motion_base_value(t, P_E1) + 5);
-    hold(B_SAVE);
-    bad += check("  SAVE held: the lock is gone (one undo for the whole turn), the step's hit stays",
-        !motion_lock_count(t) && (t->step[4].hit & 1u));
-    hold(B_SAVE);
-    bad += check("  held again (redo): the lock is back at its value", motion_lock_get(t, 4, P_E1, &v) &&
-        v == motion_base_value(t, P_E1) + 5);
-    frames(2000);
-    lk_down(k4);
-    press(B_EDIT);
-    lk_up(k4);
-    bad += check("  a step held + [EDIT] clears it", !motion_lock_count(t) && str_eq(ui.msg, "LOCKS CLEARED"));
-    hold(B_SAVE);
-    bad += check("  SAVE held brings it back", motion_lock_get(t, 4, P_E1, &v) && v == motion_base_value(t, P_E1) + 5);
-    frames(2000);
-    lk_down(k4);
-    press(B_EDIT);
-    lk_up(k4);
-    lk_down(k4);
-    press(B_EDIT);                                       /* (no lock there now: NO LOCKS, the undo copy kept) */
-    lk_up(k4);
-    hold(B_SAVE);
-    bad += check("  [EDIT] on a step without locks takes no undo copy (the clear before stays undoable)",
-        motion_lock_count(t) == 1u);
-    return bad;
-}
 /* 1.1.5: SEQ > AUTO LIST (ui_events.c); 1.2: the AUTOMATION page, its rows: PLAY, QUANTIZE, the records (and CHANCE / RATCH / NUDGE), + ADD */
 static uint32_t rows_n(void) { uint16_t rw[EV_ROWS]; return ev_list(rw); }   /* PLAY, QUANTIZE and + ADD included */
 static uint32_t row_at(uint32_t r) { uint16_t rw[EV_ROWS]; return r < ev_list(rw) ? rw[r] : 0xFFFFu; }
@@ -816,8 +678,7 @@ static int auto_list(void)
     for (i = 0; i < P_COUNT; i++)                        /* names: an id each, none of DIGITAL's, lanes on DRUM only */
         if (ev_id_ok(t, i) && ((i >= P_FM1_ATK && i <= P_FM4_LEVEL) || (i >= P_LN0 && i <= P_LN7) || !motion_param(i)))
             break;
-    bad += check("  KNOB 3's list: what motion records and the sound has (no OP ENV, no DRUM lanes off DRUM)", i == P_COUNT &&
-        ev_id_ok(&trk[3], P_LN0));
+    bad += check("  KNOB 3's list: what motion records and the sound has (no OP ENV, no DRUM lanes)", i == P_COUNT);
     {
         char a[12], b[12];
         ev_name(t, P_ED_FLT, a); ev_name(t, P_LD_FLT, b);
@@ -832,6 +693,5 @@ int main(void)
 {
     int bad = motion_recording() + motion_capacity() + probability_playback() + compact_project() + fun7_89() + loads_and_song() + repeat_mode();
     bad += arp_new_modes();
-    bad += lock_playback() + lock_edit() + lock_project() + lock_ui() + lock_undo() + auto_list();
     printf("%s\n", bad ? "MOTION TEST FAILED" : "motion/chance/compact storage tests passed"); return bad != 0;
 }

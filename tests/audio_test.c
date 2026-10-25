@@ -43,7 +43,7 @@ static void fresh(void)
     memset(&song, 0, sizeof song);
     memset(&chain, 0, sizeof chain);
     host_tracks_init();
-    for (p = 0; p < NPART; p++) host_preset(&trk[p], ENGI_FM6, 2);
+    for (p = 0; p < NPART; p++) host_preset(&trk[p], ENGI_TESTSYNTH, 2);
     memset(&felucca_dbg, 0, sizeof felucca_dbg);
     audio_cpu_rem = audio_halves = audio_max_us = 0;
     shed_req = 0; shed_count = 0; shed_over = 0;

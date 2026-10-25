@@ -1,3 +1,23 @@
+# mini-vision
+
+A fork of [Mini-Tone](https://github.com/) 1.0.4 (GPL-3.0-only) that is becoming a wavetable synthesizer after Roland's n/vision
+(specifications gathered in `docs/NVISION_SPECS.md`; the wavetable generator: `tools/gen_nvision_wt.py`). Where it stands:
+
+- **Every engine of Mini-Tone is gone but TR808.** The engine numbers are kept (the stores and the editor protocol name engines by
+  index): the removed ones are `ENG_GONE` entries that play silence, TR808 is still engine 24. The image is 306 kB (571 kB before).
+- **FM6's room in the project format is kept** (`FM6_PACKED`, 128 bytes a track, zeros): the stored formats keep their sizes; it is free
+  for the next engine's per-track data.
+- **The host tests run with a melodic engine and a drum-grid engine of their own** (`firmware/src/eng_testsynth.c`, `FELUCCA_TEST_ENGINE=1`,
+  set by `tests/run_tests.sh`; never in the firmware). They stand in for the sounds the tests were written with (FM6, DRUM). The voice-mode
+  checks of `tests/regress.c` (`VOICE_MODE_CHECKS`) are off until a melodic engine of the product can play them.
+- **Not adapted yet:** `web/` (the editor still has FM6 and the other engines in it: `node web/test_web.mjs` fails its mock-table checks),
+  `tests/cpu_baseline.txt` (empty: needs a counter on this host), the DRUM grid and the other UI code of the removed engines.
+- **TR808 fix:** a tom, or the kick at a low TUNE and a long DECY, could settle into a limit cycle (a tone at -60 dBFS) that never ended
+  and kept its voice in the budget of 8; the voices now end late in a hit (`T8_TOM_TAIL_X`, `T8_BD_TAIL_QX`). `tests/tr808_test.c`
+  checks that every voice is free 44 s after a hit, on every preset and at TUNE / DECY 0 / 64 / 127.
+
+---
+
 # Mini-Tone
 
 [![License: GPL-3.0-only](https://img.shields.io/badge/license-GPL--3.0--only-blue.svg)](LICENSE)

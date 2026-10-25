@@ -20,66 +20,70 @@ static uint8_t eng_mem_owner[NPART];       /* engine index + 1 whose state is in
 #define ENG_MEM(p) ((void *)eng_mem[p].b)  /* part p's region (p < NPART) */
 #define ENG_MEM_FITS(name, size) _Static_assert((size) <= ENG_MEM_PART, name " state over ENG_MEM_PART")
 
-#include "eng_drum.c"           /* DRUM: the 8-lane kit (drum_voice.c) */
-#include "eng_fm6.c"            /* FM6: 6-operator FM, msfa ported (fm6_core.c, Apache-2.0) */
-#include "fm4_convert.c"        /* DIGITAL's tables, and its sounds -> FM6 */
-#if FELUCCA_FM4
-#include "eng_digital.c"        /* DIGITAL: four-operator FM (retired; FELUCCA_FM4=1 builds it) */
-#endif
-#if FELUCCA_SWARM
-#include "eng_swarm.c"          /* SWARM: seven-oscillator super-saw cluster (4 voices a part) */
-#else
-static void swm_track_loaded(track_t *t) { (void)t; }
-#endif
-#if FELUCCA_FMTONE
-#include "eng_fmtone.c"         /* FMTONE: four-operator FM (C, A, B1, B2), after Elektron's FM TONE (6 voices a part) */
-#else
-static void fmt_track_loaded(track_t *t) { (void)t; }
-#endif
-#if FELUCCA_WAVETONE
-#include "eng_wavetone.c"       /* WAVETONE: two wavetable oscillators with phase distortion, interaction and a noise modeler (4 voices a part) */
-#else
-static void wvt_track_loaded(track_t *t) { (void)t; }
-#endif
-#if FELUCCA_FMDRUM
-#include "eng_fmdrum.c"         /* FMDRUM: three-operator FM drum with a pitch sweep, wavefolder, 62 PCM transients and a noise generator (4 voices a part) */
-#else
-static void fdr_track_loaded(track_t *t) { (void)t; }
-#endif
-#if FELUCCA_SID
-#include "eng_sid.c"            /* SID: a 6581-style oscillator (sync, ring, combined waves, noise LFSR) and multimode filter (3 voices a part) */
-#endif
-#if FELUCCA_CHIP
-#include "eng_chip.c"           /* CHIP: after the Syntakt's SY CHIP: a waveform axis (static, animated, tables, pulse) and an arpeggiator of 4 notes (4 voices a part) */
-#else
-static void chip_track_loaded(track_t *t) { (void)t; }
-#endif
-#if FELUCCA_DUAL
-#include "eng_dual.c"           /* DUALVCO: after the Syntakt's SY DUAL VCO: two oscillators with decays, mix / ring / FM, bend, overdrive (4 voices a part) */
-#else
-static void dual_track_loaded(track_t *t) { (void)t; }
-#endif
-#if FELUCCA_ANA4
-#include "eng_ana4.c"           /* ANALOG4: after Elektron's Analog Four: two oscillators, sub, noise, two filters, two envelopes (4 voices a part) */
-#else
-static void a4_track_loaded(track_t *t) { (void)t; }
-#endif
-#if FELUCCA_BRAIDS
-#include "eng_braids.c"         /* BRAIDS: Mutable Instruments' Braids macro oscillator, 48 models (one voice a part; braids_osc.c is MIT) */
+/* The DRUM engine is gone; what the sequencer and the UI still read of it: a step's lane hits (step_t.hit) play these GM
+ * notes on any engine, the lanes' names, and the EDIT layer's lane mutes (none now). */
+static uint8_t drum_mute[NPART];
+static const uint8_t DRUM_LANE_NOTE[NLANE] = {36, 38, 39, 42, 46, 45, 37, 56};
+/* the lane a GM note strikes (35 .. 81; a note outside it: its pitch class on the lanes) */
+static uint32_t drum_lane(uint32_t note)
+{
+    static const uint8_t L[47] = {0, 0, 6, 1, 2, 1, 5, 3, 5, 3, 5, 4, 5, 5, 7, 5, 7, 7, 7, 7, 5, 7, 7, 7, 7, 7, 7, 7, 7, 7,
+                                  7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7};   /* (35 .. 81) */
+    return note >= 35u && note <= 81u ? L[note - 35u] : (note % 12u) & (NLANE - 1u);
+}
+/* the lanes step s strikes: its hits, and its notes on their lanes (a NOTE step only) */
+static uint32_t step_lanes(const step_t *s)
+{
+    uint32_t m = 0, i;
+    if (s->time != ST_NOTE)
+        return 0;
+    for (i = 0; i < s->n && i < 4u; i++)
+        m |= 1u << drum_lane(s->note[i]);
+    return m | s->hit;
+}
+static uint32_t step_accents(const step_t *s) { return s->flags & SF_ACCENT ? step_lanes(s) : s->acc & step_lanes(s); }
+/* a step's notes that are a lane's note become that lane's hits (the grid's edits) */
+static void step_to_grid(step_t *s)
+{
+    uint32_t i;
+    if (s->time != ST_NOTE)
+        return;
+    for (i = s->n < 4u ? s->n : 4u; i-- > 0;) {
+        uint32_t l = drum_lane(s->note[i]);
+        if (s->note[i] == DRUM_LANE_NOTE[l]) {
+            s->hit |= (uint8_t)(1u << l);
+            step_drop_note(s, i);
+        }
+    }
+    if (!s->n && (s->flags & SF_ACCENT)) {
+        s->acc |= s->hit;
+        s->flags &= (uint8_t)~SF_ACCENT;
+    }
+}
+static const char *drum_lane_name(const track_t *t, uint32_t l)
+{
+    static const char *const N[NLANE] = {"KICK", "SNARE", "CLAP", "HATCL", "HATOP", "TOM", "RIM", "BELL"};
+    (void)t;
+    return N[l & (NLANE - 1u)];
+}
+static const char *drum_lane_abbr(const track_t *t, uint32_t l)
+{
+    static const char *const N[NLANE] = {"BD", "SD", "CP", "CH", "OH", "TM", "RS", "CB"};
+    (void)t;
+    return N[l & (NLANE - 1u)];
+}
+
+#if FELUCCA_TEST_ENGINE
+#include "eng_testsynth.c"      /* TESTSYNTH: a saw voice, for the host tests */
 #endif
 #if FELUCCA_TR808
 #include "eng_tr808.c"          /* TR808: a TR-808 of 16 voices after the 8W8 module's circuit models (GPL-3.0), in fixed point */
 #endif
-#if FELUCCA_TB303
-#include "eng_tb303.c"          /* TB303: after Roland's TB-303: saw / square, a resonant ladder filter, decay envelope, accent (one voice a part) */
-#endif
 
-/* The engines that were removed (1.0.0): ANALOG 0, PHASE 2, LOFI 3, SAMPLE 4, VOICE 5, TRIO 6, WHEEL 7, GRAIN 8, PHYS 9,
- * NOISE 11, SLICE 13. The stores name engines by index and the table is append-only, so their numbers stay: a sound
- * that names one (a project, a user preset, the editor) loads with its values as they were and plays silence (ENG_GONE),
- * and the engine is never offered (eng_ok). DIGITAL (1) stays as it was: its sounds convert to FM6. */
-#define ENG_REMOVED_MASK ((1u << 0) | (1u << 2) | (1u << 3) | (1u << 4) | (1u << 5) | (1u << 6) | (1u << 7) | (1u << 8) | \
-                          (1u << 9) | (1u << 11) | (1u << 13))
+/* The engines that are removed: every one of Mini-Tone's but TR808 (24). The stores name engines by index and the table is
+ * append-only, so their numbers stay: a sound that names one loads with its values as they were and plays silence
+ * (ENG_GONE), and the engine is never offered (eng_ok). */
+#define ENG_REMOVED_MASK (((1u << 24) - 1u) & ~((uint32_t)FELUCCA_TEST_ENGINE << 12) & ~((uint32_t)FELUCCA_TEST_ENGINE << 10))
 static void gone_note_on(track_t *t, voice_t *v) { (void)t; (void)v; }
 static void gone_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const vmod_t *m)
 {
@@ -97,83 +101,27 @@ static const engine_t ENG_GONE = {
 
 /* the editor protocol, user presets and projects store these indices: append, never reorder */
 static const engine_t *const ENGINES[NENGINES] = {
-    &ENG_GONE,                   /* 0 ANALOG (removed) */
-#if FELUCCA_FM4
-    &ENG_DIGITAL,                /* 1 (ENGI_DIGITAL) */
+    &ENG_GONE, &ENG_GONE, &ENG_GONE, &ENG_GONE, &ENG_GONE, &ENG_GONE,   /* 0..5 */
+    &ENG_GONE, &ENG_GONE, &ENG_GONE, &ENG_GONE,
+#if FELUCCA_TEST_ENGINE
+    &ENG_TESTDRUM,                                                 /* 10 (ENGI_DRUM: the host tests' grid engine) */
 #else
-    &ENG_FM4_GONE,               /* 1: reserved (DIGITAL, retired: its sounds convert to FM6, fm4_convert.c) */
+    &ENG_GONE,
 #endif
-    &ENG_GONE,                   /* 2 PHASE (removed) */
-    &ENG_GONE,                   /* 3 LOFI (removed) */
-    &ENG_GONE,                   /* 4 SAMPLE (removed) */
-    &ENG_GONE,                   /* 5 VOICE (removed) */
-    &ENG_GONE,                   /* 6 TRIO (removed) */
-    &ENG_GONE,                   /* 7 WHEEL (removed) */
-    &ENG_GONE,                   /* 8 GRAIN (removed) */
-    &ENG_GONE,                   /* 9 PHYS (removed) */
-    &ENG_DRUM,                   /* 10 (ENGI_DRUM) */
-    &ENG_GONE,                   /* 11 NOISE (removed) */
-    &ENG_FM6,                    /* 12 (ENGI_FM6) */
-    &ENG_GONE,                   /* 13 SLICE (removed) */
-#if FELUCCA_SWARM
-    &ENG_SWARM,                  /* 14 (FELUCCA_SWARM=0 builds without it) */
+    &ENG_GONE,   /* 6..11 */
+#if FELUCCA_TEST_ENGINE
+    &ENG_TESTSYNTH, &ENG_GONE, &ENG_GONE, &ENG_GONE, &ENG_GONE, &ENG_GONE,   /* 12 (the host tests' melodic engine), 13..17 */
+#else
+    &ENG_GONE, &ENG_GONE, &ENG_GONE, &ENG_GONE, &ENG_GONE, &ENG_GONE,   /* 12..17 */
 #endif
-#if FELUCCA_FMTONE
-    &ENG_FMTONE,                 /* 15 (FELUCCA_FMTONE=0 builds without it; it needs SWARM) */
-#endif
-#if FELUCCA_WAVETONE
-    &ENG_WAVETONE,               /* 16 (FELUCCA_WAVETONE=0 builds without it; it needs FMTONE) */
-#endif
-#if FELUCCA_FMDRUM
-    &ENG_FMDRUM,                 /* 17 (FELUCCA_FMDRUM=0 builds without it; it needs WAVETONE) */
-#endif
-#if FELUCCA_SID
-    &ENG_SID,                    /* 18 (FELUCCA_SID=0 builds without it; it needs FMDRUM) */
-#endif
-#if FELUCCA_CHIP
-    &ENG_CHIP,                   /* 19 (FELUCCA_CHIP=0 builds without it; it needs SID) */
-#endif
-#if FELUCCA_DUAL
-    &ENG_DUAL,                   /* 20 (FELUCCA_DUAL=0 builds without it; it needs CHIP) */
-#endif
-#if FELUCCA_ANA4
-    &ENG_ANA4,                   /* 21 (FELUCCA_ANA4=0 builds without it; it needs DUAL) */
-#endif
-#if FELUCCA_BRAIDS
-    &ENG_BRAIDS,                 /* 22 (FELUCCA_BRAIDS=0 builds without it; it needs ANA4) */
-#endif
-#if FELUCCA_TB303
-    &ENG_TB303,                  /* 23 (FELUCCA_TB303=0 builds without it; it needs BRAIDS) */
-#endif
-#if FELUCCA_TR808
-    &ENG_TR808,                  /* 24 (FELUCCA_TR808=0 builds without it; it needs TB303) */
-#endif
+    &ENG_GONE, &ENG_GONE, &ENG_GONE, &ENG_GONE, &ENG_GONE, &ENG_GONE,   /* 18..23 */
+    &ENG_TR808,                  /* 24 (ENGI_TR808) */
 };
 
 /* the engine's name as the knob column shows it (about 6 characters: the column's small font ellipsises a longer one);
  * the protocol and the editor keep engine_t.name */
 static const char *eng_label(const engine_t *e)
 {
-#if FELUCCA_WAVETONE
-    if (e == &ENG_WAVETONE)
-        return "WVTONE";
-#endif
-#if FELUCCA_FMDRUM
-    if (e == &ENG_FMDRUM)
-        return "FMDRM";
-#endif
-#if FELUCCA_DUAL
-    if (e == &ENG_DUAL)
-        return "DUAL";
-#endif
-#if FELUCCA_ANA4
-    if (e == &ENG_ANA4)
-        return "ANLG4";
-#endif
-#if FELUCCA_BRAIDS
-    if (e == &ENG_BRAIDS)
-        return "BRAIDS";
-#endif
     return e->name;
 }
 
@@ -203,44 +151,11 @@ static void eng_mem_claim(const track_t *t)
  * engine indices, never DIGITAL's reserved 1 (with FELUCCA_FM4 it follows FM6). The indices stay as they are (the
  * stores and the protocol hold them); only this table orders them */
 static const uint8_t ENGINE_ORDER[NENG_SHOWN] = {
-    12,                          /* FM6 */
-#if FELUCCA_FMTONE
-    15,                          /* FMTONE (the FM engines together) */
+#if FELUCCA_TEST_ENGINE
+    12,                          /* TESTSYNTH */
+    10,                          /* TESTDRUM */
 #endif
-#if FELUCCA_FM4
-    1,                           /* DIGITAL */
-#endif
-#if FELUCCA_SWARM
-    14,                          /* SWARM */
-#endif
-    10,                          /* DRUM */
-#if FELUCCA_WAVETONE
-    16,                          /* WAVETONE */
-#endif
-#if FELUCCA_FMDRUM
-    17,                          /* FMDRUM */
-#endif
-#if FELUCCA_SID
-    18,                          /* SID */
-#endif
-#if FELUCCA_CHIP
-    19,                          /* CHIP */
-#endif
-#if FELUCCA_DUAL
-    20,                          /* DUALVCO */
-#endif
-#if FELUCCA_ANA4
-    21,                          /* ANALOG4 */
-#endif
-#if FELUCCA_BRAIDS
-    22,                          /* BRAIDS */
-#endif
-#if FELUCCA_TB303
-    23,                          /* TB303 */
-#endif
-#if FELUCCA_TR808
     24,                          /* TR808 */
-#endif
 };
 
 /* the engines one can pick (engine 1 only with FELUCCA_FM4), in ENGINE_ORDER: eng_ok(e), the n-th of them
@@ -251,7 +166,7 @@ static uint32_t eng_rank(uint32_t e)
 {
     uint32_t n;
     if (!eng_ok(e))
-        e = ENGI_FM6;                            /* (DIGITAL without FELUCCA_FM4: its sounds play as FM6) */
+        e = ENGI_TR808;
     for (n = 0; n < NENG_SHOWN && ENGINE_ORDER[n] != e; n++)
         ;
     return n < NENG_SHOWN ? n : 0u;
@@ -305,7 +220,9 @@ static const struct {
 #define NPATTERNS (sizeof PATTERNS / sizeof PATTERNS[0])
 
 /* the parts at power-on (engine, preset, PATTERNS[n - 1] in the sequencer, 0 = empty: all are): bass, pad, lead, drums */
-static const uint8_t TRK_DEF[NPART][3] = {{ENGI_FM6, 2, 0}, {15, 0, 0}, {14, 0, 0}, {ENGI_DRUM, 0, 0}, {16, 0, 0}, {17, 0, 0}};
-                                                                      /* FM6 FM BASS, FMTONE TINE EP, SWARM SUPER LEAD, DRUM KIT,
-                                                                       * WAVETONE SYNC LEAD, FMDRUM 808 KICK */
+#if FELUCCA_TEST_ENGINE
+static const uint8_t TRK_DEF[NPART][3] = {{ENGI_TESTSYNTH, 2, 0}, {ENGI_TESTSYNTH, 4, 0}, {ENGI_TESTSYNTH, 3, 0}, {ENGI_DRUM, 0, 0}, {ENGI_TESTSYNTH, 0, 0}, {ENGI_TESTSYNTH, 1, 0}};
+#else
+static const uint8_t TRK_DEF[NPART][3] = {{ENGI_TR808, 0, 0}, {ENGI_TR808, 0, 0}, {ENGI_TR808, 0, 0}, {ENGI_TR808, 0, 0}, {ENGI_TR808, 0, 0}, {ENGI_TR808, 0, 0}};
+#endif
 static uint32_t trk_def_engine(uint32_t i) { return TRK_DEF[i % NPART][0]; }

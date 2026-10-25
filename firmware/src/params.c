@@ -73,46 +73,12 @@ static const char *const N_IRATE[] = {"689", "919", "1.1k", "1.4k", "1.8k", "2.2
 static const char *const N_MSRC[] = {"OFF", "LFO", "ENV", "VEL", "KEY", "RAND", "MODW", "AT", "EXPR", "S&H", "SLEW"};
 static const char *const N_MDST[] = {"OFF", "PITCH", "CUT", "SHP", "AMP", "PAN", "DIST", "CHO", "DLY", "REV", "RATE",
                                      "VIB", "E1", "E2", "E3", "E4", "E5", "E6", "E7", "E8", "DEPTH"};
-static const char *const N_ENGNAME[] = {"ANALOG", FELUCCA_FM4 ? "DIGITAL" : "-", "PHASE", "LOFI", "SAMPLE", "VOICE", "TRIO", "WHEEL", "GRAIN", "PHYS",
-                                             "DRUM", "NOISE", "FM6",
-#if FELUCCA_SLICE
-                                             "SLICE",
-#else
-                                             "-",                      /* (a name for every engine number: ENGINES[] keeps 13 either way) */
-#endif
-#if FELUCCA_SWARM
-                                             "SWARM",
-#endif
-#if FELUCCA_FMTONE
-                                             "FMTONE",
-#endif
-#if FELUCCA_WAVETONE
-                                             "WAVETONE",
-#endif
-#if FELUCCA_FMDRUM
-                                             "FMDRUM",
-#endif
-#if FELUCCA_SID
-                                             "SID",
-#endif
-#if FELUCCA_CHIP
-                                             "CHIP",
-#endif
-#if FELUCCA_DUAL
-                                             "DUALVCO",
-#endif
-#if FELUCCA_ANA4
-                                             "ANALOG4",
-#endif
-#if FELUCCA_BRAIDS
-                                             "BRAIDS",
-#endif
-#if FELUCCA_TB303
-                                             "TB303",
-#endif
-#if FELUCCA_TR808
-                                             "TR808",
-#endif
+/* a name for every engine number (ENGINES[] in engines.c): the removed ones "-", as they play silence */
+static const char *const N_ENGNAME[NENGINES] = {
+    [0 ... 23] = "-",
+    [10] = FELUCCA_TEST_ENGINE ? "DRUM" : "-",             /* (the host tests' grid engine) */
+    [12] = FELUCCA_TEST_ENGINE ? "TESTSYNTH" : "-",       /* (the host tests' melodic engine) */
+    [24] = "TR808",
 };
 
 #define PD(l, f, mn, mx, df) {l, f, mn, mx, df, 0, 0}
@@ -299,8 +265,7 @@ static const param_desc_t *param_desc_of(uint32_t e, uint32_t id)
  * stands for */
 static int32_t enum_orig(const param_desc_t *d, int32_t v)
 {
-    if (d->names == N_DRUM_KIT)
-        return v >= 0 && v < DK_COUNT ? (int32_t)DK_PLAYS[v] : v;
+    (void)d;
     return v;
 }
 
@@ -310,16 +275,13 @@ static int32_t enum_orig(const param_desc_t *d, int32_t v)
  * bank slot: 9..40 (1.4.1's B1..B32; 1.0.2's B1..B27 were 8..34) is 8, OWN, and the patch comes with what is loaded */
 static int32_t param_fit(const param_desc_t *d, int32_t v)
 {
-    v = clamp(v, d->min, d->max);
-    if (d->names == N_FM6_PATCH)
-        return v > (int32_t)FM6_OWN ? (int32_t)FM6_OWN : v;
-    return d->names == N_DRUM_KIT ? enum_orig(d, v) : v;
+    return clamp(v, d->min, d->max);
 }
 
 /* v is a value a knob passes over: an alias, or one of FM6's bank slots without a voice */
 static int enum_skip(const param_desc_t *d, int32_t v)
 {
-    return enum_orig(d, v) != v || (d->names == N_FM6_PATCH && !fm6_slot_ok(v));
+    return enum_orig(d, v) != v;
 }
 /* a knob moved an F_ENUM from `from` to v: past any value it skips in that direction; with none left to the end, the
  * last one it does not skip on the way from `from` (else `from`) */
@@ -650,11 +612,11 @@ static int page_for_engine(uint32_t i, uint32_t e)
     if (PAGES[i].own)                                 /* an engine's own pages (WAVETONE's INTERACT, UTIL, NOISE) */
         return e + 1u == PAGES[i].own;
     if (PAGES[i].scope == SC_TRACK && PAGES[i].id[0] >= P_LN0 && PAGES[i].id[0] <= P_LN7)
-        return e == ENGI_DRUM;
+        return FELUCCA_TEST_ENGINE && e == ENGI_DRUM;   /* (DRUM's lane levels: the engine is gone; the host tests' grid engine has them) */
     if (PAGES[i].id[0] == P_FTYPE)                    /* FILTER (1.5, #104): ANALOG's, which is gone: never shown */
         return 0;
     if (PAGES[i].graph >= GR_FMOP && PAGES[i].graph <= GR_FMENV)
-        return e == ENGI_FM6;
+        return 0;                                     /* (FM6's operator pages: the engine is gone) */
 #if FELUCCA_SLICE
     if (PAGES[i].graph == GR_SLICES)
         return ENGINES[e] == &ENG_SLICE;

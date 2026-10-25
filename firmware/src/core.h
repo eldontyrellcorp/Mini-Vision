@@ -13,78 +13,34 @@
 #define NTRK NPART               /* tracks (the formats and the protocol count these): every track is a part */
 #define NSTEP 64
 #define HALF_FRAMES 128          /* I2S half buffer: 2.9 ms at 44.1 kHz (a key waits 0..1 half, then plays 1 half later) */
-#ifndef FELUCCA_FM4
-#define FELUCCA_FM4 0            /* the DIGITAL engine (eng_digital.c, four-operator FM): kept in the tree, not built
-                                  * by default; replaced by FM6, its sounds convert (fm4_convert.c) */
-#endif
-#ifndef FELUCCA_SWARM
-#define FELUCCA_SWARM 1          /* the SWARM engine (eng_swarm.c), engine 14 */
-#endif
-#ifndef FELUCCA_FMTONE
-#define FELUCCA_FMTONE 1         /* the FMTONE engine (eng_fmtone.c), engine 15; it needs SWARM (14): the numbers are stored */
-#endif
-#if FELUCCA_FMTONE && !FELUCCA_SWARM
-#error "FELUCCA_FMTONE is engine 15 and needs the SWARM engine (14): build with FELUCCA_SWARM=1, or FELUCCA_FMTONE=0"
-#endif
-#ifndef FELUCCA_WAVETONE
-#define FELUCCA_WAVETONE 1       /* the WAVETONE engine (eng_wavetone.c), engine 16; it needs FMTONE (15): the numbers are stored */
-#endif
-#if FELUCCA_WAVETONE && !FELUCCA_FMTONE
-#error "FELUCCA_WAVETONE is engine 16 and needs the FMTONE engine (15): build with FELUCCA_FMTONE=1, or FELUCCA_WAVETONE=0"
-#endif
-#ifndef FELUCCA_FMDRUM
-#define FELUCCA_FMDRUM 1         /* the FMDRUM engine (eng_fmdrum.c), engine 17, with its 62 built-in transients (~40 KB of flash); it needs WAVETONE (16): the numbers are stored */
-#endif
-#if FELUCCA_FMDRUM && !FELUCCA_WAVETONE
-#error "FELUCCA_FMDRUM is engine 17 and needs the WAVETONE engine (16): build with FELUCCA_WAVETONE=1, or FELUCCA_FMDRUM=0"
-#endif
-#ifndef FELUCCA_SID
-#define FELUCCA_SID 1            /* the SID engine (eng_sid.c), engine 18, after the MOS 6581; it needs FMDRUM (17): the numbers are stored */
-#endif
-#if FELUCCA_SID && !FELUCCA_FMDRUM
-#error "FELUCCA_SID is engine 18 and needs the FMDRUM engine (17): build with FELUCCA_FMDRUM=1, or FELUCCA_SID=0"
-#endif
-#ifndef FELUCCA_CHIP
-#define FELUCCA_CHIP 1           /* the CHIP engine (eng_chip.c), engine 19, after Elektron's SY CHIP; it needs SID (18): the numbers are stored */
-#endif
-#if FELUCCA_CHIP && !FELUCCA_SID
-#error "FELUCCA_CHIP is engine 19 and needs the SID engine (18): build with FELUCCA_SID=1, or FELUCCA_CHIP=0"
-#endif
-#ifndef FELUCCA_DUAL
-#define FELUCCA_DUAL 1           /* the DUALVCO engine (eng_dual.c), engine 20, after Elektron's SY DUAL VCO; it needs CHIP (19): the numbers are stored */
-#endif
-#if FELUCCA_DUAL && !FELUCCA_CHIP
-#error "FELUCCA_DUAL is engine 20 and needs the CHIP engine (19): build with FELUCCA_CHIP=1, or FELUCCA_DUAL=0"
-#endif
-#ifndef FELUCCA_ANA4
-#define FELUCCA_ANA4 1           /* the ANALOG4 engine (eng_ana4.c), engine 21, after Elektron's Analog Four; it needs DUALVCO (20): the numbers are stored */
-#endif
-#if FELUCCA_ANA4 && !FELUCCA_DUAL
-#error "FELUCCA_ANA4 is engine 21 and needs the DUALVCO engine (20): build with FELUCCA_DUAL=1, or FELUCCA_ANA4=0"
-#endif
-#ifndef FELUCCA_BRAIDS
-#define FELUCCA_BRAIDS 1         /* the BRAIDS engine (eng_braids.c), engine 22, after Mutable Instruments' Braids (MIT; braids_osc.c); it needs ANALOG4 (21): the numbers are stored */
-#endif
-#if FELUCCA_BRAIDS && !FELUCCA_ANA4
-#error "FELUCCA_BRAIDS is engine 22 and needs the ANALOG4 engine (21): build with FELUCCA_ANA4=1, or FELUCCA_BRAIDS=0"
-#endif
-#ifndef FELUCCA_TB303
-#define FELUCCA_TB303 1          /* the TB303 engine (eng_tb303.c), engine 23, after Roland's TB-303; it needs BRAIDS (22): the numbers are stored */
-#endif
-#if FELUCCA_TB303 && !FELUCCA_BRAIDS
-#error "FELUCCA_TB303 is engine 23 and needs the BRAIDS engine (22): build with FELUCCA_BRAIDS=1, or FELUCCA_TB303=0"
-#endif
+/* mini-vision: every engine of Mini-Tone is gone but TR808. The engine numbers stay as the stores and the protocol hold
+ * them (engines.c ENG_REMOVED_MASK: a sound that names a removed engine plays silence), so TR808 is still engine 24. The
+ * flags stay, 0, for the code that tests them. */
+#define FELUCCA_FM4 0
+#define FELUCCA_SWARM 0
+#define FELUCCA_FMTONE 0
+#define FELUCCA_WAVETONE 0
+#define FELUCCA_FMDRUM 0
+#define FELUCCA_SID 0
+#define FELUCCA_CHIP 0
+#define FELUCCA_DUAL 0
+#define FELUCCA_ANA4 0
+#define FELUCCA_BRAIDS 0
+#define FELUCCA_TB303 0
 #ifndef FELUCCA_TR808
-#define FELUCCA_TR808 1          /* the TR808 engine (eng_tr808.c), engine 24, after the TR-808 of the 8W8 module (GPL-3.0); it needs TB303 (23): the numbers are stored */
+#define FELUCCA_TR808 1          /* the TR808 engine (eng_tr808.c), engine 24, after the TR-808 of the 8W8 module (GPL-3.0) */
 #endif
-#if FELUCCA_TR808 && !FELUCCA_TB303
-#error "FELUCCA_TR808 is engine 24 and needs the TB303 engine (23): build with FELUCCA_TB303=1, or FELUCCA_TR808=0"
+#ifndef FELUCCA_TEST_ENGINE
+#define FELUCCA_TEST_ENGINE 0    /* the host tests' melodic engine (eng_testsynth.c, number 12): tests/run_tests.sh; never in the firmware */
 #endif
-#define NENGINES (14 + FELUCCA_SWARM + FELUCCA_FMTONE + FELUCCA_WAVETONE + FELUCCA_FMDRUM + FELUCCA_SID + FELUCCA_CHIP + FELUCCA_DUAL + FELUCCA_ANA4 + FELUCCA_BRAIDS + FELUCCA_TB303 + FELUCCA_TR808)   /* SLICE (13), SWARM (14), FMTONE (15), WAVETONE (16), FMDRUM (17) come last: the other engines keep their numbers */
-#define ENGI_DIGITAL 1u          /* reserved without FELUCCA_FM4: never selectable (eng_ok), its sounds load as FM6 */
-#define NENG_SHOWN (2 + FELUCCA_FM4 + FELUCCA_SWARM + FELUCCA_FMTONE + FELUCCA_WAVETONE + FELUCCA_FMDRUM + FELUCCA_SID + FELUCCA_CHIP + FELUCCA_DUAL + FELUCCA_ANA4 + FELUCCA_BRAIDS + FELUCCA_TB303 + FELUCCA_TR808)   /* the engines one can pick: PRESETS, the EDIT layer, the editor,
-                                                * in the display order of engines.c ENGINE_ORDER (FM6, DRUM + the optional ones; the older engines are
-                                                * still built, so saved sounds play, but are hidden) */
+#define NENGINES 25
+#define ENGI_DIGITAL 1u          /* reserved: never selectable (eng_ok) */
+#define NENG_SHOWN (1 + 2 * FELUCCA_TEST_ENGINE)             /* the engines one can pick: PRESETS, the EDIT layer, the editor, in the display order of
+                                  * engines.c ENGINE_ORDER */
+/* The projects keep the room FM6's patches had (project.c: 128 bytes a track just before the name), so the stored formats
+ * keep their sizes; nothing writes it now (zeros) and the room is free for the next engine's per-track data. */
+#define FM6_PACKED 128u
+static const uint8_t FM6_INIT[FM6_PACKED];
 #define UP_SLOTS 32u             /* user presets (upreset.c) */
 #define NELEM(a) (sizeof(a) / sizeof((a)[0]))
 

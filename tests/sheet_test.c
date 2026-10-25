@@ -303,61 +303,6 @@ static int copy_delete(void)
     return bad;
 }
 
-static int drum_sheet(void)
-{
-    int bad = 0, ok;
-    track_t *t;
-    ui_power_on();
-    song.sel = 3;
-    t = &trk[3];
-    track_defaults_steps(t);
-    t->p[P_SLEN] = 16;
-    go_page(GR_ROLL);
-    ui.cursor = 2;
-    ui.lane = 1;
-    frame();
-    grid_hit(t, 2, 1, 1);
-    ok = drum_track(t) && (step_lanes(&t->step[2]) & 2u);
-    open_sheet();
-    close_up();
-    ok &= ui.sheet == 1u && !grid_on();
-    bad += check("DRUM grid: OCT+ held opens the sheet (the grid's keys play meanwhile)", ok);
-    turn(EN_K2, 1);
-    ok = (step_accents(&t->step[2]) & 2u) != 0u;
-    sheet_row(DR_RATCH);
-    turn(EN_K2, 1);
-    turn(EN_K2, 1);
-    ok &= step_ratchet(&t->step[2]) == 3u;
-    sheet_row(DR_NUDGE);
-    turn(EN_K2, 1);
-    turn(EN_K2, 1);
-    turn(EN_K2, 1);
-    ok &= step_micro(&t->step[2]) == 3;
-    sheet_row(DR_FILL);
-    turn(EN_K2, 1);
-    ok &= step_fill(&t->step[2]) == FC_FILL;
-    bad += check("  ACC the hit's accent, RATCH x3, NUDGE +3/64, FILL: the step's", ok);
-    sheet_row(DR_MOVE);
-    turn(EN_K2, 1);
-    ok = ui.cursor == 3u && (step_lanes(&t->step[3]) & 2u) && !(step_lanes(&t->step[2]) & 2u) &&
-         (step_accents(&t->step[3]) & 2u);
-    turn(EN_K2, -1);
-    turn(EN_K2, -1);
-    turn(EN_K2, -1);
-    ok &= ui.cursor == 0u && (step_lanes(&t->step[0]) & 2u);
-    ui.msg_t = 0;
-    turn(EN_K2, -1);
-    ok &= msg_is("NO ROOM") && ui.cursor == 0u;
-    bad += check("  MOVE: the hit (and its accent) a step a detent, stopped at the first step", ok);
-    sheet_row(DR_COPY);
-    press(B_OCTUP);
-    ok = ui.cursor == 1u && (step_lanes(&t->step[1]) & 2u) && (step_lanes(&t->step[0]) & 2u) && ui.sheet == DR_MOVE + 1u;
-    sheet_row(DR_DEL);
-    press(B_OCTUP);
-    ok &= !ui.sheet && !(step_lanes(&t->step[1]) & 2u) && (step_lanes(&t->step[0]) & 2u) && msg_is("HIT DELETED");
-    bad += check("  COPY: just after it, then MOVE moves the copy; DELETE takes the hit out, the sheet closes", ok);
-    return bad;
-}
 
 static int glo_fill(void)
 {
@@ -454,7 +399,7 @@ static int other_pages(void)
 
 int main(void)
 {
-    int bad = start_knob() + drum_sheet() + glo_fill() + open_close() + rows() + zoom_del() + moves() + copy_delete() + other_pages();
+    int bad = start_knob() + glo_fill() + open_close() + rows() + zoom_del() + moves() + copy_delete() + other_pages();
     printf("%s\n", bad ? "SHEET TEST FAILED" : "sheet tests passed");
     return bad != 0;
 }

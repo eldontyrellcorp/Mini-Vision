@@ -209,9 +209,8 @@ static void test_filter(void)
     }
     /* ANALOG, the engine that read TYPE, is gone: ANALOG4 reads it (filter 1), every other engine that sounds ignores it */
     for (e = 1; e < NENGINES; e++) {
-        if (!ENGINES[e]->npresets || e == ENGI_ANA4 || e == 14 || e == 15 || e == 16 || e == 19 || e == 20)
-            continue;                                     /* (the engines with the resonant filter read it: ANALOG4, SWARM, FMTONE,
-                                                           * WAVETONE, CHIP, DUALVCO; tests/rsvf_test.c) */
+        if (!ENGINES[e]->npresets)
+            continue;                                     /* (mini-vision: TR808 reads no filter TYPE) */
         same &= phrase_child(e, 0, 0) == phrase_child(e, 0, type_hp);
     }
     check("TYPE BP / HP on every engine without the resonant filter: its phrase bit for bit", same);

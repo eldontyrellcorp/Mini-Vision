@@ -38,6 +38,14 @@ enum { T8_BD, T8_SD, T8_LT, T8_MT, T8_HT, T8_LC, T8_MC, T8_HC, T8_RS, T8_CL, T8_
 #define T8_ONE 65536             /* 1.0 volt */
 #define T8_QT 16                 /* a voice is over after 400 samples below this, as it is heard (Q16: -72 dBFS): the resonators' rounding keeps a few counts ringing for ever */
 
+/* A resonator that rings long (a tom, or the kick at a low pitch and a long DECY, or a voice hit again while it rings) can settle
+ * into a limit cycle of its rounding, a tone of up to -50 dBFS that never ends and keeps its voice in the budget of 8 for
+ * ever. Late in a hit, when the designed decay has long gone far under the floor of 16 bits (a tom: 2 ring times, each the
+ * time of 40 dB; the kick: 2 s, where the threshold is lower: its decay can be 8 s), "over" is a higher level. */
+#define T8_TOM_TAIL_X 2u
+#define T8_TOM_TAIL_QX 64        /* x qt: -36 dBFS */
+#define T8_BD_TAIL_QX 8          /* -54 dBFS */
+
 static inline int32_t t8_m30(int32_t a, int32_t k) { return (int32_t)(((int64_t)a * k) >> 30); }   /* a * k, k Q30 */
 static inline int32_t t8_m16(int32_t a, int32_t k) { return (int32_t)(((int64_t)a * k) >> 16); }   /* a * k, k Q16 */
 
@@ -217,6 +225,7 @@ typedef struct {                                         /* the bass drum (w8_bd
     int32_t forward, loop, trim, atk, volts, tone_a;     /* Q16: the forward gain, Q30 loop gain, Q16 tune trim, attack, volts, Q15 tone */
     uint32_t f0_inc;
     uint16_t gate, age, quiet;
+    uint32_t tail_at, n;                                 /* the samples since the hit, and when the truncating filter takes over */
 } t8_bd_t;
 
 
@@ -245,6 +254,8 @@ static void t8_bd_trigger(t8_bd_t *b, int32_t tune, int32_t decay, int32_t tone,
     b->atk_env = 1 << 27;                                                       /* (the slow envelopes are Q27: Q16 would stall them) */
     b->age = 0;
     b->quiet = 0;
+    b->tail_at = 88200u;                                                        /* 2 s */
+    b->n = 0;
 }
 
 static __attribute__((noinline)) void t8_bd_run(t8_bd_t *b, int32_t *y, uint32_t n, int32_t qt)
@@ -268,6 +279,7 @@ static __attribute__((noinline)) void t8_bd_run(t8_bd_t *b, int32_t *y, uint32_t
             t8_bt_set(&b->bt, inc, (uint32_t)(((uint64_t)T8_BD_Q * (uint32_t)lift) >> 16));
         }
         b->age++;
+        b->n++;
         x = t8_m16(vp, b->forward) + t8_m30(t8_clip12(b->fb), b->loop);
         yo = t8_bq(&b->bt, x);
         b->fb = yo;
@@ -280,7 +292,7 @@ static __attribute__((noinline)) void t8_bd_run(t8_bd_t *b, int32_t *y, uint32_t
             b->bt.z1 = b->bt.z2 = b->fb = b->tone_z = b->dc_z = 0;
             out = 0;
         }
-        if (out > qt || out < -qt)
+        if (out > (b->n > b->tail_at ? qt * T8_BD_TAIL_QX : qt) || out < -(b->n > b->tail_at ? qt * T8_BD_TAIL_QX : qt))
             b->quiet = 0;
         else if (b->quiet != 0xFFFFu && ++b->quiet > 400)
             b->quiet = 0xFFFF;
@@ -368,6 +380,7 @@ typedef struct {                                         /* w8_tom_circuit.h Tom
     uint32_t f0_inc;
     uint16_t gate, age, quiet;
     uint8_t mode;
+    uint32_t tail_at, n;                                 /* as the kick's */
 } t8_tom_t;
 #define T8_TOM_Q 709000u         /* 10.818 (Q16) */
 /* base notes of 8W8 (w8_engine.cpp kBaseNote), in 1/256 semitone: LT 42.02, MT 48.58, HT 54.83, LC 55.88, MC 62.49, HC 67.55 */
@@ -404,6 +417,8 @@ static void t8_tom_trigger(t8_tom_t *d, uint32_t which, int32_t tune, int32_t de
     d->fwd = (int32_t)(((uint64_t)t8_pow2(ex) * (d->mode ? 439091u : 602931u)) >> 16);
     d->age = 0;
     d->quiet = 0;
+    d->tail_at = (uint32_t)(((uint64_t)ring * 44100u * T8_TOM_TAIL_X) / 1000000u);   /* 2 rings */
+    d->n = 0;
 }
 static __attribute__((noinline)) void t8_tom_run(t8_tom_t *d, int32_t *y, uint32_t n, int32_t qt)
 {
@@ -440,10 +455,11 @@ static __attribute__((noinline)) void t8_tom_run(t8_tom_t *d, int32_t *y, uint32
             d->bt.z1 = d->bt.z2 = d->fb = d->dc = 0;
             out = 0;
         }
-        if (out > qt || out < -qt)
+        if (out > (d->n > d->tail_at ? qt * T8_TOM_TAIL_QX : qt) || out < -(d->n > d->tail_at ? qt * T8_TOM_TAIL_QX : qt))
             d->quiet = 0;
         else if (d->quiet != 0xFFFFu && ++d->quiet > 400)
             d->quiet = 0xFFFF;
+        d->n++;
         y[i] = T8_Y(out);
     }
 }

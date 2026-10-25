@@ -85,7 +85,7 @@ static void build_music(void)
 {
     uint32_t t, i;
     for (t = 0; t < NTRK; t++) {
-        static const uint8_t E[NTRK] = {ENGI_FM6, 15, 14, ENGI_DRUM, 18, 19};
+        static const uint8_t E[NTRK] = {ENGI_TESTSYNTH, ENGI_TESTSYNTH, ENGI_TESTSYNTH, ENGI_DRUM, ENGI_TESTSYNTH, ENGI_TESTSYNTH};
         host_preset(&trk[t], E[t], t & 1u);
         trk[t].p[P_LEVEL] = (int16_t)(60 + t);
         trk[t].p[P_PAN] = (int16_t)(t * 9) - 20;
@@ -97,7 +97,6 @@ static void build_music(void)
     }
     trk[4].p[P_E5] = 33; trk[4].p[P_E6] = 77;
     trk[5].p[P_E1] = 5;
-    fm6_patch[4][3] = 17; fm6_patch[5][9] = 3;
     chain_config.count = 3;
     for (i = 0; i < 3u; i++) {
         uint32_t k;
@@ -159,7 +158,7 @@ static int pack_merge(void)
     make_music();
     project_capture(&a);
     bad += check("capture: six sound tracks and the motion events of all six (places up to 5 << 6 | 63)",
-                 a.t[4].engine == 18u && a.t[5].engine == 19u && a.motion.count == 6u && motion_of(&a, 4, 6, 0) == 4u);
+                 a.t[4].engine == ENGI_TESTSYNTH && a.t[5].engine == ENGI_TESTSYNTH && a.motion.count == 6u && motion_of(&a, 4, 6, 0) == 4u);
     ok = proj_pack(&st, &a) && proj_import(&b, &st, sizeof st);
     bad += check("FUN10 alone: tracks 1..4 and their events as ever; tracks 5 and 6 come back as at power-on",
                  ok && same_track(&a, &b, 0) && same_track(&a, &b, 3) && defaults_5_6(&b) && motion_of(&b, 0, NPROJ, 0) == 2u);
@@ -230,7 +229,7 @@ static int flash_roundtrip(void)
     project_load(0);
     ok &= trk[4].eng_req == trk_def_engine(4) && trk[4].p[P_E5] != 33 && motion.count == 0u;
     project_load(1);
-    ok &= trk[4].eng_req == 18u && trk[4].p[P_E5] == 33 && motion.count == 6u;
+    ok &= trk[4].eng_req == ENGI_TESTSYNTH && trk[4].p[P_E5] == 33 && motion.count == 6u;
     bad += check("slots are separate: slot 0 holds its own tracks 5 and 6, slot 1 the six-track music", ok);
     return bad;
 }
@@ -316,7 +315,7 @@ static int damaged(void)
     host_tracks_init();
     project_load(3);
     bad += check("project_load with a damaged extension in flash: tracks 1..4 loaded, 5 and 6 at power-on",
-                 trk[0].eng_req == ENGI_FM6 && trk[3].eng_req == ENGI_DRUM && trk[4].eng_req == trk_def_engine(4) &&
+                 trk[0].eng_req == ENGI_TESTSYNTH && trk[3].eng_req == ENGI_DRUM && trk[4].eng_req == trk_def_engine(4) &&
                  trk[4].p[P_E5] != 33);
     return bad;
 }
@@ -357,16 +356,15 @@ static int autosave(void)
     bad += check("autosave_poll: the music with its tracks 5 and 6 written (the extension object too)",
                  as.writes == 1u && st_load(OBJ_AUTOSAVEX, &projx_buf, sizeof projx_buf) == (int)sizeof projx_buf);
     power_cycle();
-    ok = autosave_boot(1) == 1 && trk[4].eng_req == 18u && trk[5].eng_req == 19u && trk[4].p[P_E5] == 33 &&
+    ok = autosave_boot(1) == 1 && trk[4].eng_req == ENGI_TESTSYNTH && trk[5].eng_req == ENGI_TESTSYNTH && trk[4].p[P_E5] == 33 &&
          trk[5].p[P_E1] == 5 && motion.count == 6u && chain_config.row[1].slot[4] == CHAIN_SILENT;
-    bad += check("autosave_boot: all six tracks, their steps, FM6 patches, sections and events restored", ok &&
-                 !memcmp(trk[5].step, a.t[5].step, sizeof trk[5].step) && fm6_patch[4][3] == 17);
+    bad += check("autosave_boot: all six tracks, their steps, sections and events restored", ok &&
+                 !memcmp(trk[5].step, a.t[5].step, sizeof trk[5].step));
     {   /* the signature moves with a change on track 6 only */
         uint32_t s0 = autosave_sig(), s1;
         trk[5].p[P_LEVEL] ^= 3;
         s1 = autosave_sig();
-        bad += check("the autosave signature sees a change on track 6 (and one on its FM6 patch)",
-                     s0 != s1 && (fm6_patch[5][2] ^= 1, autosave_sig() != s1));
+        bad += check("the autosave signature sees a change on track 6", s0 != s1);
     }
     return bad;
 }
@@ -414,7 +412,7 @@ static int step_extras(void)
     power_cycle();
     memset(proj_slot, 0, sizeof proj_slot);
     project_load(1);
-    ok &= trk[4].eng_req == 18u && trk[4].p[P_E5] == 33 && trk[4].step[7].n == x.t[0].step[7].n && !trk[4].step[7].lvl &&
+    ok &= trk[4].eng_req == ENGI_TESTSYNTH && trk[4].p[P_E5] == 33 && trk[4].step[7].n == x.t[0].step[7].n && !trk[4].step[7].lvl &&
           !trk[4].step[7].fx && !trk[0].step[3].lvl && !trk[0].step[3].fx && motion.count == 6u &&
           !memcmp(trk[5].step, x.t[1].step, 0) && trk[5].p[P_SLEN] == 64;
     bad += check("a FUNX of before the extras (11-byte steps): tracks 5 and 6 load as they were, no extras anywhere", ok);
@@ -466,7 +464,7 @@ static int stoch_save(void)
     power_cycle();
     memset(proj_slot, 0, sizeof proj_slot);
     project_load(2);
-    ok &= trk[4].eng_req == 18u && trk[4].p[P_E5] == 33 && trk[5].p[P_SLEN] == 64 && motion.count == 6u;
+    ok &= trk[4].eng_req == ENGI_TESTSYNTH && trk[4].p[P_E5] == 33 && trk[5].p[P_SLEN] == 64 && motion.count == 6u;
     for (i = 0; i < NTRK; i++)
         ok &= !trk[i].stoch.on && trk[i].stoch.dens == 60 && trk[i].stoch.vmax == 110;
     bad += check("  a FUNY extension (before the settings): tracks 5 and 6 as they were, every track's settings the defaults, OFF", ok);

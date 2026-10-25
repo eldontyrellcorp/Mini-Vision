@@ -218,44 +218,8 @@ static const uint8_t MIDI_CC_MAP[][2] = {
 };
 /* per engine (ENGINES[] order): CC74's E index + 1 in the high nibble, CC71's in the low one, 0 = none */
 static const uint8_t MIDI_CC_ENG[NENGINES] = {
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0,                     /* 0..9: ANALOG, DIGITAL, PHASE, LOFI, SAMPLE, VOICE, TRIO, WHEEL, GRAIN, PHYS: gone */
-    0x30,                                             /* 10 DRUM TONE */
-    0,                                                /* 11 NOISE: gone */
-    0x30,                                             /* 12 FM6 MLVL */
-    0,                                                /* 13 SLICE: gone */
-#if FELUCCA_SWARM
-    0x80,                                             /* SWARM CUT (no resonance control) */
-#endif
-#if FELUCCA_FMTONE
-    0x57,                                             /* FMTONE HARM, FB */
-#endif
-#if FELUCCA_WAVETONE
-    0x26,                                             /* WAVETONE PD1 (CC74), PD2 (CC71) */
-#endif
-#if FELUCCA_FMDRUM
-    0x87,                                             /* FMDRUM FOLD (CC74), FB (CC71) */
-#endif
-#if FELUCCA_SID
-    0x67,                                             /* SID CUT (CC74), RES (CC71) */
-#endif
-#if FELUCCA_CHIP
-    0x80,                                             /* CHIP OVER (CC74; no resonance) */
-#endif
-#if FELUCCA_DUAL
-    0x67,                                             /* DUALVCO BEND (CC74), BAL (CC71) */
-#endif
-#if FELUCCA_ANA4
-    0,                                                /* ANALOG4: its cutoffs are operator slots, not EDIT values: none */
-#endif
-#if FELUCCA_BRAIDS
-    0x32,                                             /* BRAIDS COLR (CC74), TIMB (CC71) */
-#endif
-#if FELUCCA_TB303
-    0x23,                                             /* TB303 CUT (CC74), RES (CC71) */
-#endif
-#if FELUCCA_TR808
-    0x21,                                             /* TR808 DECY (CC74), TUNE (CC71) */
-#endif
+    [10] = 0x30,                                      /* TESTDRUM TONE */
+    [24] = 0x21,                                      /* TR808 DECY (CC74), TUNE (CC71) */
 };
 /* a CC sets parameter id of track t as a knob would: 0..127 over its range */
 static void midi_cc_set(track_t *t, uint32_t id, uint32_t value)

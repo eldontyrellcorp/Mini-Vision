@@ -14,12 +14,7 @@ import os
 import re
 import sys
 
-FUNCS = ["digital_render", "digital_render_legacy", "digital_render_custom",
-         "drum_render", "fm6_render", "fm6_op_run", "fm6_op_fb",
-         "sid_render", "chip_render", "dual_render",          # SID, SY CHIP, SY DUAL VCO (the engines that came with Mini-Tone)
-         "dv_metal_run", "dv_kick_run", "dv_snare_run", "dv_clap_run", "dv_hat_run", "dv_tom_run",   # drum_voice.c
-         "dv_rim_run", "dv_bell_run", "dv_cym_run", "dv_out", "dv_metal_mix",
-         "slicer_track",
+FUNCS = ["slicer_track",
          "fm1_alnk0_irq", "fm1_timer5_irq",               # the audio ISR; TIMER5: the key / LED scan (hal/fm1_input.h)
          "uac_tap48",                                       # the USB audio input at 48 kHz: the 44.1 -> 48 resampler (usb.c)
          "click_render",                                    # the metronome's click (click.c), while it sounds
@@ -28,21 +23,10 @@ FUNCS = ["digital_render", "digital_render_legacy", "digital_render_custom",
          "perf_flanger", "perf_phaser",                     # .. FLANGER, PHASER (1.2), while held or fading
          "rev_room", "rev_spring", "rev_hall", "rev_elek", "rev_side_mix", "dly_side_mix",   # the reverb bus (fx.c): REVERB TYPE ROOM / SPRING / HALL / ELEK (and its stereo), the ping-pong side
          "track_insert", "ins_drive", "ins_swept",           # the per-track INSERT (fx.c, 1.5), while a TYPE plays
-         "tb_render", "bra_render", "dig_render", "ana_render", "br_svf_process",   # TB303, BRAIDS: the engine, the macro oscillator's blocks
          "t8_bd_run", "t8_sd_run", "t8_tom_run", "t8_cl_run", "t8_ma_run", "t8_cp_run", "t8_rs_run", "t8_bank_run",   # TR808: the voices
-         "t8_cb_run", "t8_hat_run", "t8_cy_run", "t8_render",
-         "mac_CSaw", "mac_Morph", "mac_SawSquare", "mac_SineTriangle", "mac_Buzz", "mac_Sub", "mac_DualSync", "mac_Triple",
-         "mac_SawComb", "mac_Digital",                      # .. its analog models (braids_osc.c)
-         "ana_RenderSaw", "ana_RenderVariableSaw", "ana_RenderCSaw", "ana_RenderSquare", "ana_RenderTriangle", "ana_RenderSine",
-         "ana_RenderTriangleFold", "ana_RenderSineFold", "ana_RenderBuzz"]
-FUNCS += ["dig_Render" + n for n in (
-    "TripleRingMod SawSwarm Comb Toy DigitalFilter Vosim Vowel VowelFof Harmonics Fm FeedbackFm ChaoticFeedbackFm Plucked Bowed "
-    "Blown Fluted StruckBell StruckDrum Kick Cymbal Snare Wavetables WaveMap WaveLine WaveParaphonic FilteredNoise "
-    "TwinPeaksNoise ClockedNoise GranularCloud ParticleNoise DigitalModulation QuestionMark").split()]   # .. its digital models
-# built only with FELUCCA_FM4=1 (DIGITAL, src/eng_digital.c; not in the default build, so not in BUDGET): absent,
-# they are skipped; present, checked against these (their budget lines until the engine was retired in 1.0)
-OPTIONAL = {"digital_render": 12, "digital_render_legacy": 333, "digital_render_custom": 558,
-            "uac_tap48": 504}           # (absent from a FELUCCA_UAC_48K=0 or FELUCCA_UAC=0 build)
+         "t8_cb_run", "t8_hat_run", "t8_cy_run", "t8_render"]
+# absent from a FELUCCA_UAC_48K=0 or FELUCCA_UAC=0 build: skipped; present, checked against this
+OPTIONAL = {"uac_tap48": 504}           # (absent from a FELUCCA_UAC_48K=0 or FELUCCA_UAC=0 build)
 TOL = 0.10                      # exact (no noise): small edits pass, a grown render loop does not
 DIV_W = 8                       # a divide weighs 1 + 8 instructions
 NEST = 4                        # an instruction in a loop inside a loop weighs 4, two deep 16, ...

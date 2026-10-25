@@ -380,6 +380,44 @@ static void retrigger(void)
     check("a second hit on the ringing kick adds to it (the resonator is not cleared: louder, and without a click)", pk > one * 1.1 && pk < one * 2.5 && !jump);
 }
 
+/* ---- a voice frees its slot: the long rings (toms and the kick at a low TUNE and a long DECY) settled into a limit cycle of a
+ * few LSB (a tone at -60 dBFS) that never ended: the voice kept its place in the budget of 8 for ever. Every voice, a hit at
+ * velocity 127, TUNE and DECY at 0 / 64 / 127 on every preset: inactive 44 s later (a hit on a ringing voice too) ---- */
+static void voices_free(void)
+{
+    static const int T[3] = {0, 64, 127};
+    static int32_t b[CTL];
+    uint32_t v, p, a, c, n, k, bad = 0, runs = 0;
+    for (v = 0; v < T8_NV; v++)
+        for (p = 0; p < ENG_TR808.npresets; p++)
+            for (a = 0; a < 3u; a++)
+                for (c = 0; c < 3u; c++) {
+                    uint32_t act = 0;
+                    setup();
+                    host_preset(&trk[0], ENGI_TR808, p);
+                    trk[0].p[P_E0] = (int16_t)T[a];
+                    trk[0].p[P_E1] = (int16_t)T[c];
+                    trk_note_on(&trk[0], T8_NOTE[v], 127);
+                    for (n = 0; n < 20u * FS / CTL; n++) {
+                        if (n == 8u * FS / CTL / 10u)
+                            trk_note_on(&trk[0], T8_NOTE[v], 90);      /* (a hit on the ringing voice) */
+                        memset(b, 0, sizeof b);
+                        track_render(&trk[0], b, CTL);
+                    }
+                    trk_note_off(&trk[0], T8_NOTE[v]);
+                    for (n = 0; n < 24u * FS / CTL; n++) {
+                        memset(b, 0, sizeof b);
+                        track_render(&trk[0], b, CTL);
+                    }
+                    for (k = 0; k < NVOICE; k++)
+                        act += trk[0].v[k].active;
+                    runs++;
+                    if (act && bad++ < 8u)
+                        printf("tr808: voice %u preset %u TUNE %d DECY %d: still active 44 s on\n", v, p, T[a], T[c]);
+                }
+    check("every voice, every preset, TUNE and DECY at 0 / 64 / 127: the voice is free 44 s after a hit (no limit cycle)", !bad && runs > 0);
+}
+
 /* ---- ends, bounds, the presets ---- */
 static void ends_and_presets(void)
 {
@@ -465,6 +503,7 @@ int main(void)
     knobs();
     hats();
     retrigger();
+    voices_free();
     ends_and_presets();
     pages();
     printf("tr808: %s\n", bad ? "FAILED" : "all ok");

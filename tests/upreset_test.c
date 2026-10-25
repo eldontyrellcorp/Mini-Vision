@@ -2,7 +2,7 @@
  * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments */
 /* Host test of the user preset record (firmware/src/upreset.c, -DUP_HOST part):
  * UP_PUT parsing, a bank round trip through storage.c on a simulated NOR,
- * bank / record version checks, map-by-count, pattern <-> steps, PHYS MODEL DRUM records -> the DRUM engine,
+ * bank / record version checks, map-by-count, pattern <-> steps,
  * drum grid records (version 3: UP_PUT's kind 1 and its high bits, a round trip). */
 #include <stdint.h>
 #include <stdio.h>
@@ -179,86 +179,6 @@ int main(void)
         memset(up_bank, 0, sizeof up_bank);
         up_bank_check(1, st_load(OBJ_UPRESET0 + 1, &up_bank[1], sizeof up_bank[1]));
         bad += check("a grid record: bank round trip", up_used(20) && !memcmp(up_rec(20), &got, sizeof got));
-    }
-
-    /* PHYS MODEL DRUM (before 1.0) -> the DRUM engine: from flash (a record of an older layout too), by UP_PUT */
-    {
-        static const int16_t OLD[8] = {4, 70, 80, 60, 50, 110, 100, 70}, NEW[8] = {2, 70, 80, 60, 50, 110, 1, 0};
-        up_rec_t d = r, m = r, o = r;
-        uint32_t k;
-        d.engine = ENGI_PHYS;
-        m.engine = ENGI_PHYS;                               /* MEMB: stays PHYS */
-        o.engine = ENGI_PHYS;
-        o.np = P_COUNT - 2u;                                /* an older layout: E0 at np - 8 */
-        for (k = 0; k < 8u; k++) {
-            up_set_value(&d, P_E0 + k, OLD[k]);
-            up_set_value(&m, P_E0 + k, (int16_t)(k ? 9 : 2));
-            up_set_value(&o, o.np - 8u + k, OLD[k]);
-        }
-        *up_rec(16) = d;
-        *up_rec(17) = m;
-        *up_rec(18) = o;
-        st_save(OBJ_UPRESET0 + 1, &up_bank[1], sizeof up_bank[1]);
-        memset(up_bank, 0, sizeof up_bank);
-        up_bank_check(1, st_load(OBJ_UPRESET0 + 1, &up_bank[1], sizeof up_bank[1]));
-        ok = up_used(16) && up_rec(16)->engine == ENGI_DRUM && up_used(17) && up_rec(17)->engine == ENGI_PHYS &&
-             !memcmp(up_rec(17)->p, m.p, sizeof m.p) && up_used(18) && up_rec(18)->engine == ENGI_DRUM &&
-             up_rec(16)->ver == UP_VER;
-        for (k = 0; k < 8u; k++)
-            ok &= up_value(up_rec(16), P_E0 + k) == NEW[k] && up_value(up_rec(18), o.np - 8u + k) == NEW[k];
-        bad += check("bank load: PHYS DRUM -> DRUM engine, MEMB kept", ok);
-        n = put_frame(a, 3, ENGI_PHYS, "Old kit", 0);
-        for (k = 0; k < 8u; k++) {                          /* E0..E7 of the frame: OLD */
-            uint32_t at = 3u + 7u + 1u + 2u * (P_E0 + k), u = (uint32_t)(OLD[k] + 8192);
-            a[at - 1u] = u & 127u;
-            a[at] = (u >> 7) & 127u;
-        }
-        ok = up_parse(a, n, &got, &slot) == 0 && got.engine == ENGI_DRUM;
-        for (k = 0; k < 8u; k++)
-            ok &= up_value(&got, P_E0 + k) == NEW[k];
-        bad += check("UP_PUT of PHYS DRUM -> DRUM engine", ok);
-    }
-
-    /* SAMPLE SET 4 (PERC, the GM kit, retired after 1.0.2) -> the DRUM engine with its default kit: from flash (an
-     * older layout too), by UP_PUT; the rest of the sound and the pattern as stored; another SET stays SAMPLE */
-    {
-        static const int16_t KIT[8] = DRUM_KIT_E;
-        up_rec_t d = r, m = r, o = r, before;
-        uint32_t k;
-        d.engine = m.engine = o.engine = ENGI_SAMPLE;
-        o.np = P_COUNT - 2u;                                /* an older layout: E0 at np - 8 */
-        for (k = 0; k < 8u; k++) {
-            up_set_value(&d, P_E0 + k, (int16_t)(k ? 30 + k : SMP_SET_PERC));
-            up_set_value(&m, P_E0 + k, (int16_t)(k ? 30 + k : 2));   /* FLUTE: stays SAMPLE */
-            up_set_value(&o, o.np - 8u + k, (int16_t)(k ? 30 + k : SMP_SET_PERC));
-        }
-        *up_rec(19) = d;
-        *up_rec(20) = m;
-        *up_rec(21) = o;
-        st_save(OBJ_UPRESET0 + 1, &up_bank[1], sizeof up_bank[1]);
-        memset(up_bank, 0, sizeof up_bank);
-        up_bank_check(1, st_load(OBJ_UPRESET0 + 1, &up_bank[1], sizeof up_bank[1]));
-        ok = up_used(19) && up_rec(19)->engine == ENGI_DRUM && up_used(20) && up_rec(20)->engine == ENGI_SAMPLE &&
-             !memcmp(up_rec(20)->p, m.p, sizeof m.p) && up_used(21) && up_rec(21)->engine == ENGI_DRUM &&
-             !memcmp(up_rec(19)->note, d.note, sizeof d.note) && !memcmp(up_rec(19)->flags, d.flags, sizeof d.flags);
-        for (k = 0; k < 8u; k++)
-            ok &= up_value(up_rec(19), P_E0 + k) == KIT[k] && up_value(up_rec(21), o.np - 8u + k) == KIT[k];
-        for (k = 0; k < P_E0; k++)
-            ok &= up_value(up_rec(19), k) == up_value(&d, k);
-        bad += check("bank load: SAMPLE PERC -> DRUM kit, FLUTE kept", ok);
-        before = *up_rec(19);
-        up_migrate(up_rec(19));
-        bad += check("  migrated again: as it is", !memcmp(up_rec(19), &before, sizeof before));
-        n = put_frame(a, 3, ENGI_SAMPLE, "Old perc", 0);
-        {
-            uint32_t at = 3u + 8u + 1u + 2u * P_E0, u = (uint32_t)(SMP_SET_PERC + 8192);   /* E0 of the frame: SET 4 */
-            a[at - 1u] = u & 127u;
-            a[at] = (u >> 7) & 127u;
-        }
-        ok = up_parse(a, n, &got, &slot) == 0 && got.engine == ENGI_DRUM;
-        for (k = 0; k < 8u; k++)
-            ok &= up_value(&got, P_E0 + k) == KIT[k];
-        bad += check("UP_PUT of SAMPLE PERC -> DRUM kit", ok);
     }
 
     /* map by count: a record from a build with 2 parameters fewer */

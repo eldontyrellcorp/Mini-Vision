@@ -294,8 +294,8 @@ static void song_setup(void)
     host_tracks_init();
     perf_reset();
     song.g[G_BPM] = 120;
-    host_preset(t1, 18, 0);
-    host_preset(t2, ENGI_FM6, 2);
+    host_preset(t1, ENGI_TESTSYNTH, 0);
+    host_preset(t2, ENGI_TESTSYNTH, 2);
     host_drums(td);                                /* DRUM KIT */
     for (i = 0; i < 16u; i++) {
         uint8_t n = ACID[i], d[4], k = 0;
@@ -1148,7 +1148,7 @@ static void harm_demos(const char *dir)
         host_tracks_init();
         perf_reset();
         song.g[G_BPM] = 110;
-        host_preset(&trk[0], 18, 0);                       /* SID */
+        host_preset(&trk[0], ENGI_TESTSYNTH, 0);
         for (i = 0; i < 16u; i++)
             put_step(&trk[0], i, MEL[i] ? 1u : 0u, &MEL[i], MEL[i] ? ST_NOTE : ST_REST, 0);
         hd_mode = m + 1u;

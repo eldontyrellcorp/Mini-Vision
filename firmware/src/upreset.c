@@ -124,13 +124,7 @@ static void up_set_value(up_rec_t *r, uint32_t k, int16_t v)
 /* Legacy PHYS drums map through decoded parameters, not their disk representation. */
 static void up_migrate(up_rec_t *r)
 {
-    int16_t e[8]; uint32_t k;
-    if (!up_valid(r)) return;
-    for (k = 0; k < 8u; k++) e[k] = up_value(r, r->np - 8u + k);
-    if (drum_from_phys(r->engine, e) || drum_from_perc(r->engine, e)) {   /* (SAMPLE PERC: see the top) */
-        r->engine = ENGI_DRUM;
-        for (k = 0; k < 8u; k++) up_set_value(r, r->np - 8u + k, e[k]);
-    }
+    (void)r;                                            /* (mini-vision: no legacy engines to map) */
 }
 
 static void up_pat_norm(uint8_t *note, uint8_t *flags);
@@ -282,9 +276,6 @@ static void up_values(const up_rec_t *r, int16_t *v)   /* mapped and clamped for
         v[i] = (int16_t)param_fit(param_desc_of(r->engine, i), v[i]);   /* (a retired KIT: the kit it plays) */
 }
 
-#include "up_fm6.c"                            /* the FM6 user presets' patches: the same kind of store */
-#include "fm6_vbank.c"                         /* FM6's voice bank (SLOT B1..B32, 1.4.1) */
-
 static void up_boot(void)                      /* persist_boot: the banks from flash */
 {
 #if FELUCCA_FLASH
@@ -292,8 +283,6 @@ static void up_boot(void)                      /* persist_boot: the banks from f
     for (b = 0; b < UP_SLOTS / UP_PER_BANK; b++)
         up_bank_check(b, flash_ok ? st_load(OBJ_UPRESET0 + b, &up_bank[b], sizeof up_bank[b]) : -1);
 #endif
-    upf_boot();                                  /* (after the banks: it may move the retired FM6 bank's patches) */
-    fvb_boot();                                  /* FM6's voice bank: a staged one finished, its voices */
 #ifdef FELUCCA_FAVORITES
     for (uint32_t k = 0; k < UP_SLOTS; k++)
         if (!up_used(k)) favorite_set(NENGINES, k, 0);
@@ -369,7 +358,7 @@ static void up_auto_name(char *b, uint32_t e, uint32_t k)
 {
     char l[4];
     e %= NENGINES;
-    str_cpy(b, ENGINES[eng_ok(e) ? e : ENGI_FM6]->name, 9);   /* (a DIGITAL record plays as FM6) */
+    str_cpy(b, ENGINES[eng_ok(e) ? e : ENGI_TR808]->name, 9);
     up_slot_label(l, k);
     str_cpy(b + str_len(b), " ", 2);
     str_cpy(b + str_len(b), l + 1, 3);
@@ -421,13 +410,7 @@ static int up_store_cat(uint32_t k, const char *name, uint32_t cat)
         }
     }
     {
-        int rc = up_put(k, &r);                         /* the record first, then its FM6 patch (up_fm6.c) */
-        if ((rc == 0 || rc == 3) && r.engine == ENGI_FM6) {
-            int u = upf_store(k, (uint32_t)(TSEL - trk));
-            if (u == 2)
-                rc = 2;
-        }
-        return rc;
+        return up_put(k, &r);
     }
 }
 
@@ -462,14 +445,6 @@ static int up_load(uint32_t k)
     up_values(r, v);
     load_begin(t, UNDO_SOUND);                          /* (ui.c: the copy for SAVE held = undo) */
     panic_req |= (uint8_t)(1u << song.sel);
-#if !FELUCCA_FM4
-    if (r->engine == ENGI_DIGITAL) {                    /* a DIGITAL sound (kept as it was stored): FM6 */
-        int16_t p[P_COUNT];
-        for (i = 0; i < P_COUNT; i++)
-            p[i] = param_kept(i) ? t->p[i] : v[i];
-        fm4_apply(t, p);
-    } else
-#endif
     {
         fm1_irq_off();                                  /* the audio ISR must not see half a sound */
         t->eng_req = r->engine;
@@ -478,7 +453,6 @@ static int up_load(uint32_t k)
                 t->p[i] = v[i];
         t->preset = 0;
         fm1_irq_on();
-        upf_track_load(t, k);                           /* FM6: the preset's own patch (up_fm6.c) */
     }
     t->user = (uint8_t)(k + 1u);
     load_end(t);
@@ -536,7 +510,7 @@ static void up_pat_load(track_t *t, uint32_t k)
 }
 
 /* the engine a used slot's sound plays on (a DIGITAL record: FM6, without FELUCCA_FM4) */
-static uint32_t up_engine(uint32_t k) { return eng_ok(up_rec(k)->engine) ? up_rec(k)->engine : ENGI_FM6; }
+static uint32_t up_engine(uint32_t k) { return eng_ok(up_rec(k)->engine) ? up_rec(k)->engine : ENGI_TR808; }
 
 static uint32_t up_count(void)                 /* used slots */
 {

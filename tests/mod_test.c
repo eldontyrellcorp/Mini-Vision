@@ -126,7 +126,7 @@ static uint64_t phrase_child(uint32_t k)
     fflush(stdout);
     if (!(pid = fork())) {
         int16_t keep[P_COUNT];
-        fresh(18u, 0);
+        fresh(ENGI_TESTSYNTH, 0);
         if (k == 1u) {
             slot(&trk[0], 0, MS_LFO, MD_CUT, 0);   /* AMT 0 */
             slot(&trk[0], 1, MS_OFF, MD_PAN, 40);  /* SRC OFF */
@@ -177,7 +177,7 @@ static void test_math(void)
     uint32_t e_trio, k_pw;
 
     /* per-track sources on per-voice destinations */
-    fresh(18u, 0);
+    fresh(ENGI_TESTSYNTH, 0);
     lfo_at(t, 32767);
     lfo = mulq15(32767, 32767);
     slot(t, 0, MS_LFO, MD_CUT, 63);
@@ -222,7 +222,7 @@ static void test_math(void)
     mod_end(t);
 
     /* per-voice sources on per-voice destinations (mod_voice) */
-    fresh(18u, 0);
+    fresh(ENGI_TESTSYNTH, 0);
     t->p[P_VOICE] = V_POLY;
     slot(t, 0, MS_KEY, MD_CUT, 63);
     slot(t, 1, MS_VEL, MD_AMP, 63);
@@ -254,7 +254,7 @@ static void test_math(void)
     mod_end(t);
 
     /* clamping of the per-voice sums */
-    fresh(18u, 0);
+    fresh(ENGI_TESTSYNTH, 0);
     lfo_at(t, 32767);
     for (k_pw = 0; k_pw < 4u; k_pw++)
         slot(t, k_pw, MS_LFO, k_pw < 2u ? MD_CUT : MD_PITCH, 63);
@@ -269,7 +269,7 @@ static void test_math(void)
     mod_end(t);
 
     /* per-block destinations: AMT 64 = the whole range, clamped, restored */
-    fresh(18u, 0);
+    fresh(ENGI_TESTSYNTH, 0);
     t->p[P_PAN] = 0;
     t->mw = 127;
     slot(t, 0, MS_MODW, MD_PAN, 16);
@@ -312,8 +312,8 @@ static void test_math(void)
     check("every per-block value restored", t->p[P_DIST] == 64 && t->p[P_CHOR] == 64 && t->p[P_LRATE] == 100 && t->p[P_LD_PIT] == 0);
 
     /* an engine parameter: its descriptor's range */
-    e_trio = eng_by_name("SID");
-    k_pw = edit_by_label(e_trio, "PW", 7);   /* (SID: E2) */
+    e_trio = eng_by_name("TESTSYNTH");
+    k_pw = edit_by_label(e_trio, "PW", 7);   /* (TESTSYNTH: E2) */
     fresh(e_trio, 0);
     lfo_at(t, 32767);
     t->p[P_E0 + k_pw] = 100;
@@ -334,7 +334,7 @@ static void test_math(void)
                                                           str_eq(mod_dst_name(t, MD_CUT), "CUT"));
 
     /* per-voice sources on a per-block destination: the latest note-on */
-    fresh(18u, 0);
+    fresh(ENGI_TESTSYNTH, 0);
     slot(t, 0, MS_VEL, MD_PAN, 63);
     trk_note_on(t, 60, 20);
     mod_begin(t);
@@ -378,7 +378,7 @@ static int pan_e2e(void)                       /* MODW -> PAN moves the pan the 
 {
     int64_t l = 0, r = 0;
     uint32_t i, k;
-    fresh(18u, 0);
+    fresh(ENGI_TESTSYNTH, 0);
     slot(&trk[0], 0, MS_MODW, MD_PAN, 63);
     trk[0].p[P_CHOR] = trk[0].p[P_DLY] = trk[0].p[P_REV] = 0;   /* (the buses are in the middle) */
     pkt(0xB0, 1, 127);
@@ -398,7 +398,7 @@ static void test_midi(void)
 {
     static const uint8_t TRS[] = {0xB0, 1, 0x40, 1, 0x7F, 0xF8, 11, 0x20, 0xD2, 0x33, 0x34, 0x90, 60, 0, 0xB4, 1, 9};
     uint32_t i;
-    fresh(18u, 0);
+    fresh(ENGI_TESTSYNTH, 0);
     song.sel = 1;
     pkt(0xB0, 1, 100);                           /* ch 1 CC1 */
     pkt(0xB2, 11, 40);                           /* ch 3 CC11 */
@@ -417,7 +417,7 @@ static void test_midi(void)
     pkt(0xB0, 121, 0);                           /* reset all controllers */
     blocks(1);
     check("CC121 resets MODW / AT / EXPR of the channel's track", trk[0].mw == 0 && trk[1].mw == 55);
-    fresh(18u, 0);
+    fresh(ENGI_TESTSYNTH, 0);
     song.sel = 1;
     for (i = 0; i < sizeof TRS; i++)
         um_byte(TRS[i]);
@@ -451,7 +451,7 @@ static double cost(const uint8_t parts[NPART][3], int on)
     static const uint8_t NOTES[8] = {48, 52, 55, 59, 60, 64, 67, 71};
     uint32_t p, i, rep;
     double best = 1e30;
-    fresh(18u, 0);
+    fresh(ENGI_TESTSYNTH, 0);
     for (p = 0; p < NPART; p++) {
         track_t *t = &trk[p];
         host_preset(t, parts[p][0], parts[p][1]);
@@ -481,9 +481,9 @@ static double cost(const uint8_t parts[NPART][3], int on)
 
 static void test_cost(void)
 {
-    uint32_t e_phys = eng_by_name("FMTONE"), pp = 0;
-    uint8_t phys[NPART][3] = {{(uint8_t)e_phys, (uint8_t)pp, 8}}, idle[NPART][3] = {{12, 2, 0}, {12, 2, 0}, {12, 2, 0}, {12, 2, 0}, {12, 2, 0}, {12, 2, 0}};
-    uint8_t mix[NPART][3] = {{12, 2, 8}, {14, 0, 8}, {(uint8_t)e_phys, (uint8_t)pp, 4}, {18, 0, 4}, {12, 2, 0}, {12, 2, 0}};
+    uint32_t e_phys = eng_by_name("TESTSYNTH"), pp = 0;
+    uint8_t phys[NPART][3] = {{(uint8_t)e_phys, (uint8_t)pp, 8}}, idle[NPART][3] = {{ENGI_TESTSYNTH, 0, 0}, {ENGI_TESTSYNTH, 0, 0}, {ENGI_TESTSYNTH, 0, 0}, {ENGI_TESTSYNTH, 0, 0}, {ENGI_TESTSYNTH, 0, 0}, {ENGI_TESTSYNTH, 0, 0}};
+    uint8_t mix[NPART][3] = {{ENGI_TESTSYNTH, 0, 8}, {ENGI_TESTSYNTH, 1, 8}, {(uint8_t)e_phys, (uint8_t)pp, 4}, {ENGI_TESTSYNTH, 2, 4}, {ENGI_TESTSYNTH, 0, 0}, {ENGI_TESTSYNTH, 0, 0}};
     double c_idle, c0, c1, m0, m1;
     if (!instr_now()) {
         printf("mod: cost: no instruction counter on this host (proc_pid_rusage), skipped\n");
@@ -530,7 +530,7 @@ static int demos(const char *dir)
     FILE *f;
     track_t *t = &trk[0];
     /* LFO -> CUT: SID, a held chord, a slow sine LFO opens and closes the filter */
-    fresh(18u, 0);
+    fresh(ENGI_TESTSYNTH, 0);
     t->p[P_LRATE] = 30;
     slot(t, 0, MS_LFO, MD_CUT, 48);
     if ((f = demo_open(dir, "lfo_cut", 6u * FS / CTL * CTL))) {

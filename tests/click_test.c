@@ -54,7 +54,7 @@ static void fresh(void)
     memset(&chain, 0, sizeof chain);
     memset(&midi_clock, 0, sizeof midi_clock);
     host_tracks_init();
-    for (p = 0; p < NPART; p++) host_preset(&trk[p], ENGI_FM6, 2);
+    for (p = 0; p < NPART; p++) host_preset(&trk[p], ENGI_TESTSYNTH, 2);
     for (p = 0; p < NPART; p++)
         trk[p].p[P_DIST] = trk[p].p[P_CHOR] = trk[p].p[P_DLY] = trk[p].p[P_REV] = 0;
     transport_req = panic_req = 0;

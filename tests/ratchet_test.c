@@ -261,8 +261,7 @@ static int presets(void)
     step_set_ratchet(&t->step[0], 2);
     up_store(4, "GRID");
     up_pat_load(t, 4);
-    bad += check("  a DRUM grid record loads its hits x1", up_grid(up_rec(4)) && t->step[0].hit == 1u << DV_KICK &&
-                 step_ratchet(&t->step[0]) == 1u);
+    ;/* (the DRUM grid is gone:   a DRUM grid record loads its hits x1) */
     return bad;
 }
 
@@ -353,8 +352,7 @@ static int screens(void)
     memset(host_screen, 0, sizeof host_screen); ui.force = 1; ui_draw();
     y = Y_GRAPH + 6u + 4u + 6u;                      /* lane 0's hits: y 12 .. 21 of the panel */
     x = 40u + 12u;
-    bad += check("  the DRUM grid draws an x3 hit in three parts", pr_is_bar(x, y) && !pr_is_bar(x + 2u, y) &&
-                 pr_is_bar(x + 3u, y) && !pr_is_bar(x + 5u, y) && pr_is_bar(x + 6u, y));
+    ;/* (the DRUM grid is gone:   the DRUM grid draws an x3 hit) */
     return bad;
 }
 

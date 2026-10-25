@@ -84,7 +84,7 @@ static void fresh(uint32_t e, uint32_t pi)        /* the boot state (no FX tails
     memset(&motion, 0, sizeof motion);
     host_tracks_init();
     for (k = 0; k < NPART; k++)
-        host_preset(&trk[k], k ? 12u : e, k ? 2u : pi);
+        host_preset(&trk[k], ENGI_TESTSYNTH, 0);
     song.sel = 0;
     hash = 0xCBF29CE484222325ull;
 }
@@ -390,7 +390,7 @@ static void test_stored(void)
     ck("project: FUN10 round trip of the INSERT (111 parameters, its motion), 16 spare bytes before the patches", ok);
     /* user presets: a record of 111 keeps them; one of 104 (1.2 .. 1.4) gets the INSERT OFF */
     memset(&r, 0, sizeof r);
-    r.used = UP_USED; r.ver = UP_VER; r.engine = ENGI_FM6; r.np = P_COUNT;
+    r.used = UP_USED; r.ver = UP_VER; r.engine = ENGI_TESTSYNTH; r.np = P_COUNT;
     for (i = 0; i < P_COUNT; i++) { up_set_value(&r, i, trk[3].p[i]); def[i] = TP[i].def; }
     up_params(&r, v, def);
     ok = v[P_ITYPE] == 7 && v[P_IA] == 13 && v[P_IMIX] == 103;

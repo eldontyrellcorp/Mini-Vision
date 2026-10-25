@@ -11,45 +11,17 @@
 enum { CAT_NONE, CAT_BASS, CAT_LEAD, CAT_PAD, CAT_PLUCK, CAT_KEYS, CAT_DRUM, CAT_FX, CAT_OTHER, CAT_N };
 static const char *const CAT_NAME[CAT_N] = {"-", "BASS", "LEAD", "PAD", "PLUCK", "KEYS", "DRUM", "FX", "OTHER"};
 /* the category a sound without one is listed under: a kit (DRUM, SLICE: engines 10, 13) DRUM, any other OTHER */
-static uint32_t cat_of_engine(uint32_t e) { return e == 10u || e == 13u ? CAT_DRUM : CAT_OTHER; }
+static uint32_t cat_of_engine(uint32_t e) { return e == 10u || e == 13u || e == 24u ? CAT_DRUM : CAT_OTHER; }   /* (24: TR808) */
 
 #ifndef UP_HOST
 /* the factory presets' categories: per engine number (engines.c ENGINES[]), a letter per preset in its order (B BASS,
  * L LEAD, P PAD, U PLUCK, K KEYS, D DRUM, F FX, O OTHER); a preset past its string (DIGITAL's, FELUCCA_FM4 builds
  * only; SAMPLE's retired PERC, past SMP_NPRESETS): its engine's (cat_of_engine). tests/ui_test.c checks every string
  * against its engine's preset count. A preset's category is a hint for browsing: nothing else reads it */
-static const char *const PRESET_CAT[] = {
-    "LPBPBKLBULLP",              /* 0 ANALOG: SAW LEAD, SOFT PAD, SQR BASS, PWM STR, ACID, SINE KEY, RAVE, SUB BASS,
-                                  * PLUCK, BRASS, WIND, STRINGS */
-    "",                          /* 1 DIGITAL (retired) */
-    "LKPLUU",                    /* 2 PHASE: BRASS, ORGAN, STRING, RESO, BELL, WIRE */
-    "LBLLL",                     /* 3 LOFI: PULSE LD, WAVE BASS, ARP 8BIT, WAVE LEAD, STEP LEAD */
-    "KKLL",                      /* 4 SAMPLE: PIANO, (PIANO: the retired TRANH's alias), FLUTE, SAX */
-    "PLBF",                      /* 5 VOICE: CHOIR AAH, VOX LEAD, WOW BASS, WHISPER */
-    "BLLUP",                     /* 6 TRIO: FAT BASS, ARP LEAD, SYNC LEAD, RING BELL, CHIP CHOIR */
-    "KKKKK",                     /* 7 WHEEL: the organs */
-    "PFPP",                      /* 8 GRAIN: CLOUD PAD, GLITCH, FROZEN, SHIMMER */
-    "UUUPUDDPU",                 /* 9 PHYS: BELL TREE, MARIMBA, PLUCK, BOWED METAL, KALIMBA, HAND DRUM, TOMS, DRONE
-                                  * STRING, HARP */
-    "D",                         /* 10 DRUM: DRUM KIT */
-    "FFFF",                      /* 11 NOISE: WIND, RAIN, ARCADE, METAL */
-    "KUBLPUKU",                  /* 12 FM6: TINE EP, BELL, FM BASS, BRASS, PAD, MARIMBA, ORGAN, PLUCK */
-    "DD",                        /* 13 SLICE: CHOP, STUTTER */
-    "LPBLLPLLF",                 /* 14 SWARM: SUPER LEAD, DRIFT PAD, SUB SWARM, FIZZ ARP, HOOVER, GLASS SWARM, RESO SWEEP, SINE RING, SELF ZAP */
-    "KUBLPLUP",                  /* 15 FMTONE: TINE EP, BELL, FM BASS, BRASS, GLASS PAD, PLUCK LEAD, RESO PLUCK, FIFTH RING */
-    "LBUKPFDLLB",                /* 16 WAVETONE: SYNC LEAD, PWM BASS, RING BELL, HARM ORGAN, DRIFT PAD, WIND, NOISE HIT, RESO LEAD, SELF SINE, WAH BASS */
-    "DDDFFDKDKD",                /* 17 FMDRUM: 808 KICK, PUNCH KICK, SNARE, CL HAT, OP HAT, TOM, COWBELL, CLAP, RIM, LASER */
-    "LBLLUFPBBBLLPKLLUFPLUBDFLL", /* 18 SID: PULSE LEAD, SAW BASS, TRI FLUTE, SYNC LEAD, RING BELL, NOISE HAT, PWM STRINGS, COMBO BITE,
-                                  * 6581 GROWL, 8580 ACID, 6581 PS REED, 8580 PS REED, 8580 ST PAD, HOLLOW KEYS, PST VOWEL, SYNC RIP,
-                                  * RING CLANG, RING SYNC, NOTCH PAD, WAH LEAD, HP PLUCK, NOISE BASS, NOISE SNARE, NOISE ZAP, C64 ARP,
-                                  * 8580 PULSE */
-    "LLBDDFLUL",                 /* 19 CHIP: ARP MAJOR, PWM MINOR, PULSE BASS, C64 KICK, C64 SNARE, NOISE HAT, RING LEAD, CHIP PLUCK, RESO ARP */
-    "DUBBLLUDL",                 /* 20 DUALVCO: 808 KICK, FM BELL, RING METAL, SAW+SINE BASS, DUAL LEAD, FM BASS, F+R GLASS, TOM, RESO LEAD */
-    "BLLBPDDF",                  /* 21 ANALOG4: SAW BASS, PWM LEAD, SYNC LEAD, ACID, WARM PAD, KICK, ZAP TOM, NOISE HAT */
-    "BPLLPUPLUDDDKFBF",          /* 22 BRAIDS: CSAW BASS, MORPH PAD, SAW SWARM, FOLD LEAD, VOWEL PAD, PLUCK, BOWED, FLUTE, BELL, KICK, SNARE,
-                                  * CYMBAL, WAVETABLE, CLOUD, FM BASS, WIND */
-    "BBBBLBLB",                  /* 23 TB303: ACID LINE, SQUARE BASS, SQUELCH, WARM SUB, RESO LEAD, ZAPPY, DUB STAB, RAVE */
-    "DDDDD",                     /* 24 TR808: 808 KIT, BOOM KIT, TIGHT KIT, DIRTY KIT, METAL KIT */
+static const char *const PRESET_CAT[NENGINES] = {
+    [10] = "D",                /* TESTDRUM (the host tests' grid engine): DRUM KIT */
+    [12] = "KUBLPUKU",              /* TESTSYNTH (the host tests' melodic engine, FELUCCA_TEST_ENGINE): the presets FM6 had (TEST EP, BELL, BASS, BRASS, PAD, MARIMBA, ORGAN, PLUCK) */
+    [24] = "DDDDD",              /* TR808: 808 KIT, BOOM KIT, TIGHT KIT, DIRTY KIT, METAL KIT */
 };
 _Static_assert(sizeof PRESET_CAT / sizeof PRESET_CAT[0] >= NENGINES, "PRESET_CAT: a string for every engine");
 static uint32_t preset_cat(uint32_t e, uint32_t k)    /* factory preset k of engine e */

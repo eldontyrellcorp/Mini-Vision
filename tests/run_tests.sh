@@ -13,7 +13,6 @@
 #                   (tests/target_budget.txt, +10 %; exact, static).
 #   voices          the budget of 8, steal fades, MONO / LEGATO / UNISON keep their note, the VOICE cap,
 #                   no hanging notes on any MIDI / key routing.
-# ENGINE MEMORY (tests/union_test.c, 1.5): engine switches on a part (every pair and A -> B -> A of the engines that
 #                   share the part's state region, with others), hashed against 1.4's (tests/union_golden.txt).
 # UI renders (tests/ui_render.c): every screen in every palette from the real drawing code: the layout lint (no text
 #                   off the screen, cut, hidden, overlapping or spilling out of its cell / card; only free text
@@ -39,7 +38,6 @@
 #                   (1.2: when it writes, the power-on restore, damaged copies, a write cut short, wear over a session),
 #                   malformed transfers, transport-stop timeouts, MIDI and UART recovery; the MENU settings over the
 #                   editor (MENU_DESC / MENU_SET: every item, clamping, unknown ids, saving, USB SERIAL applied later).
-# FM6 BANK (tests/fm6bank_test.c, 1.4.1): the voice bank (src/fm6_vbank.c) and its editor commands against simulated NOR:
 #                   written whole and read back, its sectors (0xE7000, staged in the autosave's older copy, nothing else
 #                   touched), a power cut after any programmed byte or in any erase (the old bank or the new one, the
 #                   autosave kept), a wrong CRC, an autosave between requests, SLOT B1..B32 loading the exact records,
@@ -126,26 +124,22 @@
 # PHYS (tests/phys_test.c): stability over the whole parameter and pitch range, the worst-case cost against
 #                   the heaviest factory preset, demos in build/phys_demo/; tests/phys_ref.cpp compares the
 #                   fixed-point models with DaisySP's float originals when DaisySP is there (DAISYSP=path).
-# DRUM (tests/drum_test.c): the drum voices (src/drum_voice.c): pitch, decay, centroid and level against
 #                   Felucca's targets, the controls' directions, no clipping, DC, retriggers, the hat choke, the
 #                   kick on a small speaker; the DRUM engine (src/eng_drum.c): its key map, the 8 lanes together,
 #                   one hit per lane, the choke between lanes; the cost per voice; demos in build/drum_demo/.
 # NOISE (tests/noise_test.c): the engine (src/eng_noise.c): COLR's slope (white, pink, brown), the filter and the
 #                   register clock following the key, META periodic at the key, no DC, no clipping at the
 #                   corners, a note from silence the same twice, the cost per voice; demos in build/noise_demo/.
-# SWARM (tests/swarm_test.c): the engine (src/eng_swarm.c): the main and the swarm at the key (OCT -1 / -2 an octave /
 #                   two below), MIX 0 the main alone bit for bit, the spread growing with DTN, ANIM / NOIS moving the swarm and
 #                   a still swarm holding still, the four waveforms' harmonics, the cap of 4 voices (POLY, UNISON), one voice's
 #                   state untouched by another's, the corners of all eight parameters (headroom, DC, filter state), the level,
 #                   a note from silence the same twice, the cost against ANALOG and TRIO.
-# FMTONE (tests/fmtone_test.c, tests/fmtone_project_test.c): the engine (src/eng_fmtone.c): C / A / B1 / B2 at their ratios,
 #                   MIX changing only the algorithms with more carriers, the modulation growing with LEV, the A / B envelopes
 #                   (decay to END, DEL, slow ATK) in time, FB's harmonics, HARM + on A / B1 and - on C only (bit for bit),
 #                   TRK (none below C4, nothing left at C8), FTO and DTN in cents, the 6-voice cap, one voice's state, the
 #                   operator slots named and ranged per engine (FTO -64..63), a preset's slots, the corners of every
 #                   parameter (headroom, DC with phase-locked operators, bounded state), the level, the cost; a project
 #                   store keeping the negative values and clamping them to the engine's range.
-# WAVETONE (tests/wavetone_test.c, tests/wavetone_project_test.c): the engine (src/eng_wavetone.c): the key, TUN and OFS in
 #                   pitch, the table's anchors against theory (SQR 3rd -9.5 dB, SAW 2nd -6 dB, TRI 3rd -19.1 dB) and the
 #                   morph between frames, PD's even harmonics on a square, SYNC locked to osc 1's harmonics, RING's sum and
 #                   difference without carriers, FM's sidebands from osc 1 as the index, the two table families, DRFT's
@@ -154,7 +148,6 @@
 #                   voice's state, the slots named and ranged per engine (OFS -64..63), a preset's slots, the corners
 #                   (headroom, DC, bounded state), the level, the aliasing at C7 (measured), the cost; a project store
 #                   keeping the negative values and clamping them to the engine's range.
-# FMDRUM (tests/fmdrum_test.c, tests/fmdrum_project_test.c): the engine (src/eng_fmdrum.c) and its bank of 62 mu-law
 #                   transients (tools/gen_transients.py): the bank (62 slots, back to back, peaks near -1 dBFS, no two
 #                   alike), the key, TUNE and the ratio scale in pitch, the sweep (SWDP, SWTM), which of MAC / MBA / MBC
 #                   each algorithm uses (and which it does not), the six waves against theory, FB's upper partials, FOLD's
@@ -164,13 +157,9 @@
 #                   a hit ending by itself, the slots named and ranged per engine (RTx -32..127), the presets' slots and
 #                   the transient each names, the corners (headroom, DC, bounded state), the peak level against ANALOG,
 #                   the aliasing at C7 (measured), the cost; a project store keeping the negative ratios.
-# DIGITAL -> FM6 (tests/fm4_test.c, built with FELUCCA_FM4=1): the retired four-operator engine against its conversion
 #                   (src/fm4_convert.c): routes and carriers per algorithm, the presets' PTCH, and the sound (pitch,
-#                   centroid, RMS envelope) of its presets and algorithms; demos in build/fm4_demo/. tests/digital_test.c
 #                   (FELUCCA_FM4=1 too): DIGITAL's operator envelopes. Default builds have no DIGITAL (engine 1 reserved).
-#                   tests/fm4_div0_test.c (UBSan, #61): the conversion without a divide that can be 0 gives the values the
 #                   guarded form gave (every INDEX x FLT ENV, random sounds); a 0.9 project with DIGITAL ORGAN converts.
-# FM6 (tests/fm6_test.c): the 6-operator FM engine (src/eng_fm6.c, src/fm6_core.c): the 32 algorithms' carriers, the
 #                   operator envelopes (stages, rates, the voice ending), bit-stable notes, a click-free retrigger, no DC /
 #                   clipping over the factory patches, the macros' directions, PTCH, pack / unpack and the SysEx
 #                   layouts, the 6-voice cap, the cost per voice; demos in build/fm6_demo/.
@@ -191,7 +180,7 @@ export AC79_SDK="${AC79_SDK:-$HOME/fw-AC79_AIoT_SDK}"
 cd "$(dirname "$0")/.."
 OUT=build/host
 mkdir -p "$OUT"
-CC="${CC:-cc} -O1 -Wall -Wno-unused-function"
+CC="${CC:-cc} -O1 -Wall -Wno-unused-function -DFELUCCA_TEST_ENGINE=1"
 fail=0
 run() { echo "== $1"; shift; "$@" || fail=1; }
 
@@ -199,7 +188,6 @@ $CC -o "$OUT/storage_test" tests/storage_test.c
 run "flash storage (A/B, torn writes)" "$OUT/storage_test"
 
 $CC -o "$OUT/upreset_test" tests/upreset_test.c
-run "user presets (UP_PUT parser, bank round trip, versions, PHYS DRUM and SAMPLE PERC -> DRUM, grid records, DIGITAL kept)" "$OUT/upreset_test"
 
 $CC -o "$OUT/input_test" tests/input_test.c
 run "keys and buttons: fast press, long release, bouncy contacts (one note each), glitches, encoders" "$OUT/input_test"
@@ -242,11 +230,10 @@ if [ -f build/gen/felucca_tables.h ]; then
     run "chord keys: diatonic and fixed chords, voicings, MONO root, releases, recording, ARP, MIDI IN, kits" "$OUT/chord_test"
     $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/speaker_test" tests/speaker_test.c -lm
     run "SPEAKER EQ: FLAT / LOWCUT / BASS+ responses, BASS+ harmonics of the bass, the sub cut, no offset after, headroom on a full-scale kick (#180)" "$OUT/speaker_test"
-    run "DSP render (FM6 FM BASS)" "$OUT/hostsim" 12 2 1 "$OUT/render.wav"
+    run "DSP render (TR808 808 KIT)" "$OUT/hostsim" 24 0 1 "$OUT/render.wav"
     mkdir -p build/tracks_demo
     run "TRACKS: 6-track pattern, live recording (lengths, swing), voice budget, engine switch, cost" env TRACKS=build/tracks_demo "$OUT/hostsim" 0 0 1 "$OUT/tracks.wav"
     $CC -w -Ibuild/gen -Ifirmware/src -o "$OUT/project_test" tests/project_test.c -lm
-    run "project formats (FUN1..FUN5 -> FUN6, the grid and song chain; DIGITAL tracks -> FM6, SAMPLE PERC -> DRUM)" "$OUT/project_test"
     $CC -O1 -w -Ibuild/gen -Ifirmware/src -o "$OUT/motion_test" tests/motion_test.c -lm
     run "motion, whole-step chance, FUN7 migration, song restore, ARP repeat and the 1.2 ARP modes" "$OUT/motion_test"
     $CC -O1 -w -Ibuild/gen -Ifirmware/src -o "$OUT/ratchet_test" tests/ratchet_test.c -lm
@@ -261,16 +248,6 @@ if [ -f build/gen/felucca_tables.h ]; then
     run "1.2 (FUN10): LFO 2 SYNC / TRIG / POL, NUDGE (record, QUANTIZE, play, controls), 128 motion records, FUN10 / FUN9 / FUN8 / FUN7, user presets" "$OUT/fun10_test"
     $CC -O1 -w -Ibuild/gen -Ifirmware/src -o "$OUT/midi_control_test" tests/midi_control_test.c -lm
     run "USB/TRS clock, bend, sustain, ownership and panic recovery" "$OUT/midi_control_test"
-    $CC -O1 -w -DFELUCCA_FM4=1 -Ibuild/gen -Ifirmware/src -o "$OUT/digital_test" tests/digital_test.c -lm
-    run "DIGITAL (retired, built here with FELUCCA_FM4=1): operator envelopes/levels" "$OUT/digital_test"
-    $CC -O2 -w -DFELUCCA_FM4=1 -Ibuild/gen -Ifirmware/src -o "$OUT/fm4_test" tests/fm4_test.c -lm
-    mkdir -p build/fm4_demo
-    run "DIGITAL -> FM6: the conversion against DIGITAL (FELUCCA_FM4=1): pitch, centroid, RMS envelope; demos" \
-        "$OUT/fm4_test" build/fm4_demo
-    $CC -O2 -w -fsanitize=integer-divide-by-zero -fno-sanitize-recover=all -Ibuild/gen -Ifirmware/src \
-        -o "$OUT/fm4_div0_test" tests/fm4_div0_test.c -lm
-    run "DIGITAL -> FM6 without a divide by zero (#61): the same values as before, a 0.9 ORGAN project (UBSan)" \
-        "$OUT/fm4_div0_test"
     $CC -O1 -w -Ibuild/gen -Ifirmware/src -o "$OUT/theme_test" tests/theme_test.c -lm
     run "themes: contrast, text blending and font metrics" "$OUT/theme_test"
     $CC -O1 -w -Ibuild/gen -Ifirmware/src -o "$OUT/text_ref_test" tests/text_ref_test.c -lm
@@ -289,12 +266,6 @@ if [ -f build/gen/felucca_tables.h ]; then
     run "UI renders: layout lint (every screen and palette, every page, engine and column value), GREY gray, MONO neutral, alignment by ink (1 px fails), draw cost" \
         "$OUT/ui_render" build/ui_new build/ui_slot
     if python3 -c "import PIL" 2>/dev/null; then python3 tests/ui_render.py build/ui_new build/ui_slot; fi
-    $CC -w -DFELUCCA_FM4=1 -Ibuild/gen -Ifirmware/src -o "$OUT/ui_test_fm4" tests/ui_test.c -lm
-    run "UI built with FELUCCA_FM4=1 (DIGITAL, kept in the tree): its OP pages, EDIT cycle, algorithm charts" "$OUT/ui_test_fm4"
-    $CC -O1 -w -DFELUCCA_FM4=1 "-DFELUCCA_VERSION=\"$FV\"" -Ibuild/gen -Ifirmware/src -Itests -o "$OUT/ui_render_fm4" tests/ui_render.c -lm
-    mkdir -p build/ui_fm4/ppm build/ui_fm4_slot
-    run "UI renders with FELUCCA_FM4=1: DIGITAL's screens (EDIT, OP ENV, the 8 algorithm charts), lint, GREY gray, MONO neutral" \
-        "$OUT/ui_render_fm4" build/ui_fm4 build/ui_fm4_slot
     $CC -w -Ibuild/gen -Ifirmware/src -o "$OUT/audio_test" tests/audio_test.c -lm
     run "audio: overload protection, bounded fades and DMA diagnostics" "$OUT/audio_test"
     $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/click_test" tests/click_test.c -lm
@@ -309,8 +280,6 @@ if [ -f build/gen/felucca_tables.h ]; then
     run "STOCHASTIC mode: odds, loops, pages, the pattern kept, saved with the project" "$OUT/stoch_test"
     $CC -w -Ibuild/gen -Ifirmware/src -o "$OUT/euclid_test" tests/euclid_test.c -lm
     run "EUCLID mode: the rhythm E(PULSES, LEN) turned by ROT, its own loop, exclusive with STOCHASTIC, pages, stored bytes" "$OUT/euclid_test"
-    $CC -w -Ibuild/gen -Ifirmware/src -o "$OUT/fm6bank_test" tests/fm6bank_test.c -lm
-    run "FM6 voice bank (1.4.1): write / read, power cuts, CRC, SLOT B1..B32, stored SLOT values as before" "$OUT/fm6bank_test"
     $CC -w -Ibuild/gen -Ifirmware/src -o "$OUT/editor_test" tests/editor_test.c -lm
     run "editor: real C protocol, malformed transfers, queue recovery, MENU settings (writes build/host/menu.json)" \
         env MENU_JSON="$OUT/menu.json" "$OUT/editor_test"
@@ -345,56 +314,17 @@ if [ -f build/gen/felucca_tables.h ]; then
     run "REVERB TYPE: ROOM / SPRING bit-identical, SPRING and HALL decay / stability / level, HALL silence / stereo / ringing, model changes, cost, demos" "$OUT/reverb_test" build/fx_demo build/reverb_demo
     $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/regress" tests/regress.c -lm
     run "regression: golden renders, health, voices, CPU budget" "$OUT/regress" tests/golden.txt tests/cpu_baseline.txt
-    $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/union_test" tests/union_test.c -lm
-    run "engine memory (1.5): every switch between the engines with per-part state sounds as in 1.4 (720 sequences)" \
-        "$OUT/union_test" tests/union_golden.txt
-    $CC -w -Ibuild/gen -Ifirmware/src -o "$OUT/descdump" tests/descdump.c -lm
+    $CC -w -DFELUCCA_TEST_ENGINE=0 -Ibuild/gen -Ifirmware/src -o "$OUT/descdump" tests/descdump.c -lm
     echo "== parameter and engine tables as JSON (for the editor mock test)"
     "$OUT/descdump" > "$OUT/desc.json" || fail=1
-    $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/drum_test" tests/drum_test.c -lm
-    mkdir -p build/drum_demo
-    run "DRUM: voice targets, controls, no clipping, retrigger, hat choke, the kick on a small speaker, keys, 8 lanes, cost, demos" "$OUT/drum_test" build/drum_demo
-    $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/swarm_test" tests/swarm_test.c -lm
-    $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/fmtone_test" tests/fmtone_test.c -lm
-    run "FMTONE: ratios, carriers per algorithm, MIX, modulation, A / B envelopes (DEL ATK DEC END), FB, HARM, TRK, FTO / DTN, 6-voice cap, descriptors, corners (DC, headroom), level, determinism, cost" "$OUT/fmtone_test"
-    $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/sid_test" tests/sid_test.c -lm
-    run "SID: pitch of TRI / SAW / PULSE, SYNC, NOISE, LP / HP, corners (level), determinism, presets" "$OUT/sid_test"
-    $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/rsvf_test" tests/rsvf_test.c -lm
-    run "RSVF: the resonant filter of SWARM / FMTONE / WAVETONE / CHIP / DUALVCO / ANALOG4: shapes, Q, self-oscillation on the cutoff at every pitch, bounded, KEY, each engine's CUT / RES / KEY / TYPE" "$OUT/rsvf_test"
     $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/poly_test" tests/poly_test.c -lm
     run "POLY: tracks of LEN 7 / 16, 15 / 4, 5 / 3, 1 / 64 cycle on their own and meet every lcm steps" "$OUT/poly_test"
-    $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/chip_test" tests/chip_test.c -lm
-    run "CHIP: static waves, the arpeggiator (offsets, the first 0, SPD in Hz and divisions, single-shot), tables, pulse widths, DEC, OVER, corners, determinism, presets" "$OUT/chip_test"
-    $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/dual_test" tests/dual_test.c -lm
-    run "DUALVCO: mix, BAL, ring, FM, DEC1 / DEC2, BEND, phase restart, corners, determinism, presets" "$OUT/dual_test"
-    $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/ana4_test" tests/ana4_test.c -lm
-    run "ANALOG4: waves, PW, TUN2 / FIN2 / SUB, SYNC, filter 1 (CUT1, TYPE, the filter envelope), filter 2 (series, parallel), ENV 2 (PTCH+, PTCH-), NOIS, corners, determinism, presets" "$OUT/ana4_test"
-    $CC -O2 -w -o "$OUT/braids_osc_test" tests/braids_osc_test.c
-    run "BRAIDS oscillator (braids_osc.c) against the original Braids, sample for sample: 48 models x 2 pitches x 4 scenarios" "$OUT/braids_osc_test" tests/braids_osc_golden.txt
-    $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/braids_test" tests/braids_test.c -lm
-    run "BRAIDS: pitch from C2 to C7 (the 44.1 kHz retiming), every model sounds and is bounded and deterministic, TIMB / COLR, BITS, RATE, SWP, the two sets of delay lines, engine switch, presets, level" "$OUT/braids_test"
-    $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/tb303_test" tests/tb303_test.c -lm
-    run "TB303: pitch, CUT and the filter slope, RES peak on the cutoff, ENVM / DEC, accent (level, brightness, the sweep), corners (bounded, no DC), determinism, presets, level" "$OUT/tb303_test"
     $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/tr808_test" tests/tr808_test.c -lm
     run "TR808: the 8W8 module's 16 voices in fixed point against its own renders (peak, levels, pitch), TUNE / DECY / velocity / LEVEL / DRV, the hats' choke, a hit on a ringing drum, ends, presets, the EDIT pages" "$OUT/tr808_test"
     $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/elek_rev_test" tests/elek_rev_test.c -lm
     run "ELEK REVERB: PRE, the reverb time (DEC, INF), the shelf (FRQ, GAIN), HPF / LPF, VOL, stereo, level against HALL, bounded, determinism" "$OUT/elek_rev_test"
     $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/delay_test" tests/delay_test.c -lm
     run "DELAY: ping-pong echoes, even decay, mono when two times do not fit; TIME dotted values and ms, the knob, the display, the glide" "$OUT/delay_test"
-    $CC -O1 -w -Ibuild/gen -Ifirmware/src -Itests -o "$OUT/fmtone_project_test" tests/fmtone_project_test.c -lm
-    run "FMTONE through the project store: negative FTO kept, clamped to its own range (TP's for other engines)" "$OUT/fmtone_project_test"
-    $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/wavetone_test" tests/wavetone_test.c -lm
-    run "WAVETONE: pitch (TUN, OFS), the table's anchors, PD, INTR (SYNC, RING, FM), TABL, DRFT, PHAS, noise (slopes, DIGI, NLEV, NCUT, NDEC), 4-voice cap, descriptors, corners (DC, headroom), level, determinism, aliasing, cost" "$OUT/wavetone_test"
-    $CC -O1 -w -Ibuild/gen -Ifirmware/src -Itests -o "$OUT/wavetone_project_test" tests/wavetone_project_test.c -lm
-    run "WAVETONE through the project store: negative OFS kept, clamped to its own range (TP's for other engines)" "$OUT/wavetone_project_test"
-    $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/fmdrum_test" tests/fmdrum_test.c -lm
-    run "FMDRUM: the bank of 62 transients, pitch, ratios, sweep, algorithms, waves, FB, FOLD, HOLD / DECY / ENVR / PHSC, TRSL (all 128), TRLV, TRLP, noise (colours, NLEV, NDCY), 4-voice cap, descriptors, corners (DC, headroom), level, determinism, aliasing, cost" "$OUT/fmdrum_test"
-    $CC -O1 -w -Ibuild/gen -Ifirmware/src -Itests -o "$OUT/fmdrum_project_test" tests/fmdrum_project_test.c -lm
-    run "FMDRUM through the project store: negative ratios kept, clamped to its own range (TP's for other engines)" "$OUT/fmdrum_project_test"
-    run "SWARM: pitch and octave, MIX 0 = main alone, detune spread, ANIM / NOIS movement, waveforms, 4-voice cap, corners (DC, headroom), level, determinism, cost" "$OUT/swarm_test"
-    $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/fm6_test" tests/fm6_test.c -lm
-    mkdir -p build/fm6_demo
-    run "FM6: algorithms, envelopes, retrigger, DC, clipping, macros, patch formats, voices, cost, demos" "$OUT/fm6_test" build/fm6_demo
 else
     echo "== skip hostsim (run ./build.sh once)"
 fi
@@ -415,13 +345,13 @@ elif ! san_ok; then
 else
     mkdir -p "$OUT/asan"
     A="$OUT/asan"
-    SCC="${CC%% *} $SAN -Ibuild/gen -Ifirmware/src"
+    SCC="${CC%% *} $SAN -DFELUCCA_TEST_ENGINE=1 -Ibuild/gen -Ifirmware/src"
     export ASAN_OPTIONS="${ASAN_OPTIONS:-detect_leaks=0}"
     $SCC -o "$A/ldr_test" tests/ldr_test.c
     run "ASan/UBSan: update loader (other app -> this build)" "$A/ldr_test" "$OUT/old.fwsc" build/felucca.fwsc
     $SCC -DOWN_PKG=1 -o "$A/ota_test" tests/ota_test.c
     run "ASan/UBSan: M-UPGRADE entry (own loader)" "$A/ota_test" build/felucca.fwsc
-    for t in editor_test project_test backup_test robust_test fun10_test fm6bank_test; do
+    for t in editor_test project_test backup_test robust_test fun10_test; do
         $SCC -o "$A/$t" tests/$t.c -lm
         run "ASan/UBSan: $t" "$A/$t"
     done

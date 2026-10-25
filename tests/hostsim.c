@@ -40,6 +40,9 @@ static void fm1_delay_ms(uint32_t ms) { (void)ms; }
 #include "../firmware/src/midi_uart.c"                /* TRS MIDI IN: its parser (um_byte) feeds midi_in_q */
 #include "../firmware/src/song_chain.c"
 #include "../firmware/src/seq.c"
+#ifndef ENGI_TESTSYNTH                                 /* (without FELUCCA_TEST_ENGINE: the tests' melodic sounds are TR808's) */
+#define ENGI_TESTSYNTH ENGI_TR808
+#endif
 #define inst (trk[0])                   /* the single-part renders below: part 1 */
 
 static void wav_hdr(FILE *f, uint32_t frames)
@@ -103,33 +106,13 @@ static void host_preset_values(track_t *t, uint32_t e, uint32_t pi, const preset
     t->p[P_VOICE] = p->mono ? V_LEGATO : V_POLY;
     for (i = 0; i < 4u; i++)
         t->p[P_DIST + i] = (int16_t)(p->fx[i] ? p->fx[i] - 1 : FX_DEF[i]);
-    fm6_track_loaded(t);                          /* FM6: the preset's patch (ui.c apply_preset_to) */
-    fmt_track_loaded(t);                          /* FMTONE: the preset's operator slots */
-    wvt_track_loaded(t);                          /* WAVETONE: the preset's slots */
-    fdr_track_loaded(t);                          /* FMDRUM: the preset's slots */
-    a4_track_loaded(t);                           /* ANALOG4: the preset's slots */
 #if FELUCCA_TR808
     t8_track_loaded(t);                           /* TR808: the voices' levels */
 #endif
-    swm_track_loaded(t);                          /* SWARM, CHIP, DUALVCO: the preset's filter */
-    chip_track_loaded(t);
-    dual_track_loaded(t);
 }
 static void host_preset_req(track_t *t, uint32_t e, uint32_t pi)
 {
     uint32_t n = ENGINES[e]->npresets;
-#if !FELUCCA_FM4
-    if (e == ENGI_DIGITAL) {                      /* DIGITAL preset pi (retired): converted, as ui.c fm4_load_preset */
-        uint8_t v[FP_SIZE + 1u];
-        uint32_t tr = (uint32_t)(t - trk) % NTRK;
-        fm4_preset_values(t->p, pi);
-        t->preset = (uint8_t)fm4_convert(t->p, v);
-        t->eng_req = ENGI_FM6;
-        fm6_set_patch(tr, v);
-        fm6_slot[tr] = (uint8_t)t->p[P_E7];
-        return;
-    }
-#endif
     if (!n) {
         t->eng_req = (uint8_t)e;
         t->preset = 0;
@@ -243,7 +226,7 @@ static int tracks_demo(const char *dir, const char *name, uint32_t solo)
     }
     host_tracks_init();
     song.g[G_BPM] = 120;
-    host_preset(t1, ENGI_FM6, 2);                  /* FM BASS */
+    host_preset(t1, ENGI_TESTSYNTH, 2);                  /* FM BASS */
     host_preset(t2, TRK_DEF[1][0], TRK_DEF[1][1]);
     host_preset(t3, 14, 0);                        /* SWARM SUPER LEAD */
     host_drums(td);                                /* DRUM KIT */
@@ -601,8 +584,8 @@ static int rec_test(void)
     int ok_len, ok_short, ok_half, ok_cap, ok_swing, ok_mono, ok_chord, fail;
     host_tracks_init();
     song.g[G_BPM] = 120;
-    host_preset(t1, ENGI_FM6, 4);                   /* POLY pad */
-    host_preset(t2, ENGI_FM6, 4);
+    host_preset(t1, ENGI_TESTSYNTH, 4);                   /* POLY pad */
+    host_preset(t2, ENGI_TESTSYNTH, 4);
     host_preset(t3, 18, 0);                         /* SID PULSE LEAD */
     t1->p[P_VOICE] = t2->p[P_VOICE] = V_POLY;
     t3->p[P_VOICE] = V_MONO;
@@ -711,7 +694,7 @@ static int trs_test(void)
     int ok_parts, ok_ch10, ok_sel, ok_off, ok_hang, ok_rec;
     host_tracks_init();
     for (i = 0; i < NPART; i++) {
-        host_preset(&trk[i], ENGI_FM6, 4);
+        host_preset(&trk[i], ENGI_TESTSYNTH, 4);
         trk[i].p[P_VOICE] = V_POLY;
         trk[i].p[P_SUS] = 127;
     }
@@ -832,17 +815,16 @@ static int tracks_test(const char *dir)
         if (eng_ok(e))
             printf(" %s %s %.1f%s", ENGINES[e]->name, ENGINES[e]->presets[heavy[e]].name, best_e[e],
                    e + 1u < NENGINES ? "," : "\n");
-    {   /* FM (DIGITAL with FELUCCA_FM4, else FM6), PHASE, VOICE (their heaviest presets) and drums on part 4 at once:
-         * 3 + 3 + 2 notes and the hits in the budget of 8 */
-        const uint8_t fm = FELUCCA_FM4 ? ENGI_DIGITAL : ENGI_FM6;
-        uint8_t parts[NPART][3] = {{fm, (uint8_t)heavy[fm], 3}, {15, (uint8_t)heavy[15], 3}, {14, (uint8_t)heavy[14], 2},
-                                   {ENGI_DRUM, 0, DRUM_HITS}, {0, 0, 0}, {0, 0, 0}};
-        uint8_t full[NPART][3] = {{fm, (uint8_t)heavy[fm], 8}, {15, (uint8_t)heavy[15], 8}, {14, (uint8_t)heavy[14], 4},
-                                  {ENGI_DRUM, 0, DRUM_HITS}, {0, 0, 0}, {0, 0, 0}};
-        uint8_t vv[NPART][3] = {{14, (uint8_t)heavy[14], 4}, {14, (uint8_t)heavy[14], 4}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}};
-        uint8_t idle[NPART][3] = {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {ENGI_DRUM, 0, DRUM_HITS}, {0, 0, 0}, {0, 0, 0}};
-        uint8_t six[NPART][3] = {{fm, (uint8_t)heavy[fm], 2}, {15, (uint8_t)heavy[15], 2}, {14, (uint8_t)heavy[14], 1},
-                                 {ENGI_DRUM, 0, DRUM_HITS}, {16, (uint8_t)heavy[16], 2}, {17, (uint8_t)heavy[17], 1}};
+    {   /* TR808 on every part: 3 + 3 + 2 notes in the budget of 8, then 8 + 8 + 4 asked for, two parts, idle, all six */
+        const uint8_t t8 = ENGI_TR808;
+        uint8_t parts[NPART][3] = {{t8, (uint8_t)heavy[t8], 3}, {t8, (uint8_t)heavy[t8], 3}, {t8, (uint8_t)heavy[t8], 2},
+                                   {0, 0, 0}, {0, 0, 0}, {0, 0, 0}};
+        uint8_t full[NPART][3] = {{t8, (uint8_t)heavy[t8], 8}, {t8, (uint8_t)heavy[t8], 8}, {t8, (uint8_t)heavy[t8], 4},
+                                  {0, 0, 0}, {0, 0, 0}, {0, 0, 0}};
+        uint8_t vv[NPART][3] = {{t8, (uint8_t)heavy[t8], 4}, {t8, (uint8_t)heavy[t8], 4}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}};
+        uint8_t idle[NPART][3] = {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}};
+        uint8_t six[NPART][3] = {{t8, (uint8_t)heavy[t8], 2}, {t8, (uint8_t)heavy[t8], 2}, {t8, (uint8_t)heavy[t8], 1},
+                                 {t8, (uint8_t)heavy[t8], 1}, {t8, (uint8_t)heavy[t8], 1}, {t8, (uint8_t)heavy[t8], 1}};
         uint32_t bm2 = 0, bm3 = 0, bm6 = 0;
         double two_voice, none, six_cost;
         four = tracks_cost(parts, &bm);
@@ -851,14 +833,14 @@ static int tracks_test(const char *dir)
         none = tracks_cost(idle, 0);
         six_cost = tracks_cost(six, &bm6);
         printf("tracks: worst single part: %s %s %.1f ns\n", ENGINES[worst_e]->name, ENGINES[worst_e]->presets[worst_p].name, worst);
-        printf("tracks: %s + FMTONE + SWARM + drums, 3 + 3 + 2 notes: %.1f ns (%.2f x the worst single part), "
-               "%u voices\n", ENGINES[fm]->name, four, four / worst, bm);
+        printf("tracks: three TR808 parts, 3 + 3 + 2 notes: %.1f ns (%.2f x the worst single part), %u voices\n", four,
+               four / worst, bm);
         printf("tracks: the same, 8 + 8 + 4 notes asked for (budget keeps %u): %.1f ns (%.2f x)\n", bm2, four_full,
                four_full / worst);
-        printf("tracks: two VOICE parts, 4 + 4 voices (the heaviest 8 the budget allows): %.1f ns (%.2f x); "
-               "no notes but the drums (buses, 5 idle parts): %.1f ns\n", two_voice, two_voice / worst, none);
-        printf("tracks: all six parts (FM6, FMTONE, SWARM, drums, WAVETONE, FMDRUM), 2 + 2 + 1 + 2 + 1 notes and the hits: "
-               "%.1f ns (%.2f x the worst single part), %u voices (budget %u)\n", six_cost, six_cost / worst, bm6, NVOICE);
+        printf("tracks: two parts, 4 + 4 voices: %.1f ns (%.2f x); no notes (buses, 6 idle parts): %.1f ns\n", two_voice,
+               two_voice / worst, none);
+        printf("tracks: all six parts, 2 + 2 + 1 + 1 + 1 + 1 notes: %.1f ns (%.2f x the worst single part), %u voices (budget %u)\n",
+               six_cost, six_cost / worst, bm6, NVOICE);
         if (bm > NVOICE || bm2 > NVOICE || bm3 > NVOICE || bm6 > NVOICE || bm6 < 6u)
             fail++;
     }
@@ -868,7 +850,7 @@ static int tracks_test(const char *dir)
 
 int main(int argc, char **argv)
 {
-    int eng = argc > 1 ? atoi(argv[1]) : 12, preset = argc > 2 ? atoi(argv[2]) : 2;
+    int eng = argc > 1 ? atoi(argv[1]) : 24, preset = argc > 2 ? atoi(argv[2]) : 0;
     int mono = argc > 3 ? atoi(argv[3]) : 1;
     const char *out = argc > 4 ? argv[4] : "out.wav";
     uint32_t i, frames = FS * (getenv("SWEEP") ? 4 : 2), f, nk = 0;
@@ -889,7 +871,6 @@ int main(int argc, char **argv)
         inst.p[P_ATK] = p->env[0]; inst.p[P_DEC] = p->env[1];
         inst.p[P_SUS] = p->env[2]; inst.p[P_REL] = p->env[3]; inst.p[P_ED_FLT] = p->fenv;
     }
-    fm6_track_loaded(&inst);                            /* FM6: the preset's patch */
     inst.p[P_VOICE] = (int16_t)mono;
     inst.p[P_CHOR] = argc > 5 ? atoi(argv[5]) : 24;      /* as felucca_init */
     inst.p[P_DLY] = argc > 5 ? atoi(argv[5]) : 28;
