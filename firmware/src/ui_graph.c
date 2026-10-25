@@ -46,12 +46,20 @@ static void graph_adsr(const track_t *t, uint16_t c)
         px = x3 + i;
         py = EGY(sus * e >> 15);
     }
+    {   /* the handles (the n/vision envelope): the attack's peak, the sustain's start, the release's end */
+        int32_t hx[3] = {x1, x3, 226}, hy[3] = {top, EGY(sus), bot};
+        uint32_t k;
+        for (k = 0; k < 3u; k++) {
+            cv_rect(hx[k], top, 1, bot - top, T_RAISE);
+            cv_rect(hx[k] - 2, hy[k] - 2, 5, 5, k == 1u ? T_ACCENT : T_TEXT);
+        }
+    }
 #undef EGY
 }
 
 static void graph_lfo(const track_t *t, uint16_t c)
 {
-    int32_t x, cy = graph_ht / 2, a = 38 * graph_ht / 100, py = cy, uni = t->p[P_LPOL] != 0;
+    int32_t x, cy = graph_ht / 2 - (graph_ht == 100 ? 6 : 0), a = (graph_ht == 100 ? 32 : 38) * graph_ht / 100, py = cy, uni = t->p[P_LPOL] != 0;
     uint32_t ph = (uint32_t)t->p[P_LPHASE] << 25;
     int32_t z = uni ? cy + a : cy;                   /* the zero line: POL UNI (LFO 2) draws 0..+1 over it */
     cv_rect(PANEL_X0, z, PANEL_W, 1, T_RAISE);
@@ -63,6 +71,14 @@ static void graph_lfo(const track_t *t, uint16_t c)
         if (x)
             cv_line_t(PANEL_X0 + x - 1, py, PANEL_X0 + x, y, c, 2);
         py = y;
+    }
+    if (graph_ht == 100) {                           /* the shapes as chips, the chosen one lit */
+        int32_t k, w = clamp(t->p[P_LWAVE], 0, 4);
+        for (k = 0; k < 5; k++) {
+            cv_rrect(PANEL_X0 + 4 + k * 46, 84, 42, 14, 2, k == w ? T_ACCENT : T_RAISE, T_SURF);
+            cv_text_on(PANEL_X0 + 4 + k * 46 + (42 - text_w(&AF_S, N_LWAVE[k])) / 2, 86, &AF_S, N_LWAVE[k], k == w ? T_BG : T_MID,
+                       k == w ? T_ACCENT : T_RAISE);
+        }
     }
 }
 
@@ -571,13 +587,22 @@ static void graph_chord(const track_t *t, uint16_t c)
 /* the four sends as faders under their cards: a RAISE slot, the THEME fill from the bottom, a cap */
 static void graph_fx(const track_t *t, uint16_t c)
 {
+    static const char *const FXN[4] = {"DST", "CHO", "DLY", "REV"};
     uint32_t i;
-    for (i = 0; i < 4u; i++) {
-        int32_t h = t->p[P_DIST + i] * 76 / 127, x = CARD_X(i) + 26;
-        cv_rrect(x, 6, 4, 82, 2, T_RAISE, T_SURF);
-        if (h > 3)
-            cv_rrect(x, 88 - h, 4, h, 2, c, T_RAISE);
-        cv_rrect(x - 4, 85 - h, 12, 6, 3, c, T_SURF);
+    (void)c;
+    for (i = 0; i < 4u; i++) {                         /* the chain: a box each, filled as far as its send, arrows between */
+        int32_t v = t->p[P_DIST + i], h = v * 70 / 127, x = 8 + (int32_t)i * 58, on = v > 0;
+        cv_rect(x, 8, 48, 1, on ? T_THEME : T_RAISE);
+        cv_rect(x, 87, 48, 1, on ? T_THEME : T_RAISE);
+        cv_rect(x, 8, 1, 80, on ? T_THEME : T_RAISE);
+        cv_rect(x + 47, 8, 1, 80, on ? T_THEME : T_RAISE);
+        if (h > 0)
+            cv_rect(x + 3, 84 - h, 42, h, i == 3u ? T_L2 : T_THEME);
+        cv_text_on(x + (48 - text_w(&AF_S, FXN[i])) / 2, 92, &AF_S, FXN[i], on ? T_TEXT : T_MID, T_SURF);
+        if (i < 3u) {
+            cv_rect(x + 50, 47, 6, 1, T_MID);
+            cv_rect(x + 54, 45, 1, 5, T_MID);
+        }
     }
 }
 /* INSERT pages (1.5, fx.c track_insert): the drives and CRUSH as their curve, input (-1.5 .. +1.5 of a voice's full
