@@ -2024,35 +2024,174 @@ static void graph_song(void)
                      i < 4u ? "[K3] ADD SECTION" : "[SAVE] PROJECT A-D", T_MID, T_SURF, x0 - 10 - SG_X0);
     }
 }
-/* WTSYNTH's EDIT 1 and EDIT 2: the two layers' waveforms at the position knob (the first mip level of the frames in between), the
- * second one's scaled by how much of it MIX lets through; the tables' names over them (WAV1 left, WAV2 right) */
-static void graph_wt(const track_t *t, uint16_t c)
+/* WTSYNTH's pages (the n/vision design): EDIT 1 two layer boxes (cyan, pink) with the frame at POSITION and a frame ruler;
+ * EDIT 2 the wave shaper's curve beside the mixed waveform; OSC ENV the A / D shape and its two amounts; FILTER and FILTER 2 the
+ * frequency response (the type, the cutoff, the resonance) over a row of type chips */
+static void wt_box(int32_t x, int32_t y, int32_t w, int32_t h, uint16_t col)
 {
-    int32_t pos = clamp(t->p[P_E2], 0, 127) * 256, fq = (int32_t)(((int64_t)pos * 3613) >> 16), pf, mix = clamp(t->p[P_E3], 0, 127), cy = 66, x, l;
-    uint32_t f = (uint32_t)fq >> 8, w[2] = {(uint32_t)clamp(t->p[P_E0], 1, 63) - 1u, (uint32_t)clamp(t->p[P_E1], 1, 63) - 1u};
+    cv_rect(x, y, w, 1, col);
+    cv_rect(x, y + h - 1, w, 1, col);
+    cv_rect(x, y, 1, h, col);
+    cv_rect(x + w - 1, y, 1, h, col);
+}
+/* the layer's waveform between two frames of its table at the position (Q8 frames), inside a box */
+static void wt_wave(const track_t *t, uint32_t l, int32_t x0, int32_t y0, int32_t w, int32_t h, uint16_t col)
+{
+    int32_t pos = clamp(t->p[P_E2], 0, 127) * 256, fq = (int32_t)(((int64_t)pos * 3613) >> 16), pf, x, py = 0, cy = y0 + h / 2;
+    uint32_t f = (uint32_t)fq >> 8, wv = (uint32_t)clamp(t->p[P_E0 + l], 1, 63) - 1u;
+    const int8_t *b;
     if (f >= NV_NFRAME - 1u) {
         f = NV_NFRAME - 2u;
         pf = 256;
     } else {
         pf = fq & 255;
     }
-    cv_text_on(PANEL_X0 - 4, 0, &AF_S, NV_NAME[w[0]], c, T_SURF);
-    {
-        int32_t tw = text_w(&AF_S, NV_NAME[w[1]]);
-        cv_text_on(PANEL_X0 + PANEL_W + 4 - tw, 0, &AF_S, NV_NAME[w[1]], T_MID, T_SURF);
+    b = NV_TAB[0] + (wv * NV_NFRAME + f) * ((1u << NV_LEN_LOG2[0]) + 1u);
+    for (x = 0; x < w; x++) {
+        uint32_t i = (uint32_t)x * (1u << NV_LEN_LOG2[0]) / (uint32_t)w;
+        int32_t a = b[i], d = b[i + (1u << NV_LEN_LOG2[0]) + 1u], v = a * 256 + (d - a) * pf, y = cy - (v * (h / 2 - 4) >> 15);
+        if (x)
+            cv_line_t(x0 + x - 1, py, x0 + x, y, col, 2);
+        py = y;
     }
-    cv_rect(PANEL_X0, cy, PANEL_W, 1, T_RAISE);
-    for (l = 1; l >= 0; l--) {                                   /* (layer 2 first: layer 1 over it) */
-        const int8_t *b = NV_TAB[0] + (w[l] * NV_NFRAME + f) * ((1u << NV_LEN_LOG2[0]) + 1u);
-        int32_t py = 0, amp = 44 * (l ? (mix < 12 ? 12 : mix) : (127 - mix < 12 ? 12 : 127 - mix)) / 127;
-        for (x = 0; x < PANEL_W; x++) {
-            uint32_t i = (uint32_t)x * (1u << NV_LEN_LOG2[0]) / PANEL_W;
-            int32_t a = b[i], d = b[i + (1u << NV_LEN_LOG2[0]) + 1u], v = a * 256 + ((d - a) * pf), y = cy - (v * amp >> 15);
-            if (x)
-                cv_line_t(PANEL_X0 - 1 + x, py, PANEL_X0 + x, y, l ? T_MID : c, 2);
+}
+static void wt_ruler(int32_t pos, int32_t y)
+{
+    int32_t k, W = 224, cur = (pos * (int32_t)(NV_NFRAME - 1u) * 2 + 127) / 254;
+    for (k = 0; k < (int32_t)NV_NFRAME; k++)
+        cv_rect(8 + k * W / ((int32_t)NV_NFRAME - 1), y + (k == cur ? 0 : 3), 2, k == cur ? 10 : 5, k == cur ? T_ACCENT : T_RAISE);
+    cv_rect(8 + pos * W / 127, y + 12, 2, 4, T_ACCENT);
+}
+static const char *const WT_FT[9] = {"LP12", "BP12", "HP12", "LP24", "BP24", "HP24", "LP.R", "LP.M", "LP.S"};
+static int32_t wt_exp2_q10(int32_t q8)                        /* 2^(q8/256), Q10, for q8 -1024..1024 (clamped) */
+{
+    int32_t i, f, m;
+    q8 = clamp(q8, -1024, 1024);
+    i = q8 >> 8;
+    f = q8 & 255;
+    m = 256 + ((f * (178 + ((f * 78) >> 8))) >> 8);   /* 1 + f(.695 + .305 f), Q8 */
+    return i >= 0 ? m << (2 + i) : (m << 2) >> (-i);
+}
+static int32_t wt_log2_q4(uint32_t x)                       /* log2(x) in 1/16, x >= 1 */
+{
+    int32_t n = 31;
+    while (!(x >> n))
+        n--;
+    return n * 16 + (n >= 4 ? (int32_t)((x >> (n - 4)) & 15u) : (int32_t)((x << (4 - n)) & 15u));
+}
+static void wt_filter(const track_t *t, int32_t x0, int32_t w, int32_t y0, int32_t h)
+{
+    int32_t ty = clamp(t->p[P_FTYPE], 0, 8), cut = clamp(t->p[WT_CUT], 0, 127), res = clamp(t->p[WT_RES], 0, 127), xc = x0 + cut * (w - 1) / 127,
+            x, py = 0, qi = 1450 - res * 1300 / 127, vint = ty >= 6, kind = vint ? 0 : ty % 3, db24 = vint || ty >= 3;
+    if (vint)                                                     /* (the ladders: R softer, S bolder, near the 4-pole) */
+        qi = qi * (ty == 6 ? 10 : ty == 7 ? 8 : 6) / 10;
+    cv_rect(x0, y0 + 12 * h / 60, w, 1, T_RAISE);                 /* 0 dB */
+    for (x = 0; x < w; x++) {
+        int32_t w2 = wt_exp2_q10((x - (xc - x0)) * 2 * 256 / 24), d1 = 1024 - w2, den = ((d1 * d1) >> 10) + ((w2 * qi >> 10) * qi >> 10), num, db, y;
+        int64_t m2;
+        num = kind == 0 ? 1024 : kind == 1 ? (w2 * qi >> 10) * qi >> 10 : (w2 * w2) >> 10;
+        if (den < 1)
+            den = 1;
+        m2 = ((int64_t)num << 16) / den;
+        if (db24)
+            m2 = (m2 * m2) >> 16;
+        if (m2 < 1)
+            m2 = 1;
+        db = wt_log2_q4((uint32_t)(m2 > 0x3FFFFFF ? 0x3FFFFFF : m2)) - 16 * 16;   /* log2(m2) - 16: the level re 1 */
+        db = db * 301 / 1600;                                      /* in dB: 3.01 per octave of power */
+        y = y0 + (12 - db) * h / 60;
+        y = clamp(y, y0, y0 + h);
+        if (x)
+            cv_line_t(x0 + x - 1, py, x0 + x, y, T_THEME, 2);
+        py = y;
+    }
+    cv_rect(xc, y0, 1, h, T_ACCENT);                               /* the cutoff */
+}
+static void graph_wt(const track_t *t, uint16_t c)
+{
+    const char *ti = cur_page()->title;
+    uint16_t cc = T_THEME;
+    int32_t pos = clamp(t->p[P_E2], 0, 127), mix = clamp(t->p[P_E3], 0, 127), BW = 112, BH = 74, X1 = 8, X2 = 120, i;
+    char b[16];
+    (void)c;
+    if (str_eq(ti, "FILTER") || str_eq(ti, "FILTER 2")) {
+        int32_t ty = clamp(t->p[P_FTYPE], 0, 8), cx = 3;
+        wt_filter(t, 8, 224, 4, 66);
+        if (str_eq(ti, "FILTER 2")) {                              /* DRIVE: four chips */
+            int32_t dv = clamp(t->p[WT_DRV], 0, 3);
+            cv_text_on(8, 84, &AF_S, "DRIVE", T_MID, T_SURF);
+            for (i = 0; i < 4; i++) {
+                cv_rrect(70 + i * 40, 80, 34, 16, 2, i == dv ? T_ACCENT : T_RAISE, T_SURF);
+                fmt_int(b, i);
+                cv_text_on(70 + i * 40 + 14, 83, &AF_S, b, i == dv ? T_BG : T_MID, i == dv ? T_ACCENT : T_RAISE);
+            }
+            return;
+        }
+        for (i = 0; i < 9; i++) {
+            int32_t cw = 44, cy = i < 5 ? 74 : 92;
+            if (i == 5)
+                cx = 3 + 23;
+            cv_rrect(cx, cy, cw, 16, 2, i == ty ? T_ACCENT : T_RAISE, T_SURF);
+            cv_text_on(cx + (cw - text_w(&AF_S, WT_FT[i])) / 2, cy + 3, &AF_S, WT_FT[i], i == ty ? T_BG : T_MID, i == ty ? T_ACCENT : T_RAISE);
+            cx += cw + 1;
+        }
+        return;
+    }
+    if (str_eq(ti, "OSC ENV")) {
+        int32_t a = 6 + clamp(t->p[WT_OA], 0, 127) * 90 / 127, d = 8 + clamp(t->p[WT_OD], 0, 127) * 120 / 127, x, px = 12, py = 80, e = 32768;
+        int32_t tp = t->p[WT_TPOS], tm = t->p[WT_TMIX];
+        cv_rect(8, 82, 224, 1, T_RAISE);
+        cv_line_t(12, 80, 12 + a, 8, cc, 2);
+        px = 12 + a;
+        py = 8;
+        for (x = 1; x <= d; x++) {
+            int32_t y;
+            e = (e * (32768 - 150733 / d)) >> 15;
+            y = 80 - (72 * e >> 15);
+            cv_line_t(px, py, px + 1, y, cc, 2);
+            px++;
             py = y;
         }
+        cv_text_on(8, 94, &AF_S, "POS", T_MID, T_SURF);
+        fmt_int(b, tp);
+        cv_text_on(36, 94, &AF_S, b, T_THEME, T_SURF);
+        cv_text_on(124, 94, &AF_S, "MIX", T_MID, T_SURF);
+        fmt_int(b, tm);
+        cv_text_on(152, 94, &AF_S, b, T_L2, T_SURF);
+        return;
     }
+    if (str_eq(ti, "EDIT 2")) {                                     /* the sine fold's transfer curve, and the mixed layers */
+        int32_t wsd = clamp(t->p[P_E6], 0, 127), x, py = 0;
+        wt_box(X1, 4, BW, BH, T_RAISE);
+        wt_box(X2, 4, BW, BH, T_RAISE);
+        cv_rect(X1 + BW / 2, 5, 1, BH - 2, T_RAISE);
+        for (x = 1; x < BW - 1; x++) {
+            int32_t s = (x - BW / 2) * 32767 / (BW / 2 - 1), u = (s * (256 + wsd * 6)) >> 8, f = sine_i((uint32_t)u << 15), o = s + (((f - s) * wsd) >> 7), y;
+            o = clamp(o, -32767, 32767);
+            y = 4 + BH / 2 - (o * (BH / 2 - 4) >> 15);
+            if (x > 1)
+                cv_line_t(X1 + x - 1, py, X1 + x, y, T_L2, 2);
+            py = y;
+        }
+        wt_wave(t, 0, X2 + 1, 5, BW - 2, BH - 2, cc);
+        cv_text_on(X1, 84, &AF_S, "WS", T_MID, T_SURF);
+        fmt_int(b, wsd);
+        cv_text_on(X1 + 20, 84, &AF_S, b, T_L2, T_SURF);
+        cv_text_on(X2, 84, &AF_S, "PM", T_MID, T_SURF);
+        fmt_int(b, clamp(t->p[P_E7], 0, 127));
+        cv_text_on(X2 + 20, 84, &AF_S, b, T_THEME, T_SURF);
+        return;
+    }
+    wt_box(X1, 4, BW, BH, cc);                                     /* EDIT 1: layer 1 cyan, layer 2 pink */
+    wt_box(X2, 4, BW, BH, T_L2);
+    wt_wave(t, 0, X1 + 1, 5, BW - 2, BH - 2, cc);
+    wt_wave(t, 1, X2 + 1, 5, BW - 2, BH - 2, T_L2);
+    cv_text_on(X1 + 4, 6, &AF_S, "L1", cc, T_SURF);
+    cv_text_on(X2 + 4, 6, &AF_S, "L2", T_L2, T_SURF);
+    cv_text_fit(X1 + 4, 103, &AF_S, NV_NAME[clamp(t->p[P_E0], 1, 63) - 1], T_TEXT, T_SURF, BW - 4);
+    cv_text_fit(X2 + 4, 103, &AF_S, NV_NAME[clamp(t->p[P_E1], 1, 63) - 1], T_TEXT, T_SURF, BW - 4);
+    wt_ruler(pos, 83);
+    (void)mix;
 }
 
 static void sound_name(const track_t *t, char *b);
@@ -2061,7 +2200,7 @@ static void sound_name(const track_t *t, char *b);
 static void graph_perform(const track_t *t)
 {
     char nm[16], b[24];
-    int32_t pos = clamp(t->p[P_E2], 0, 127), mix = clamp(t->p[P_E3], 0, 127), x, k, W = 234, X0 = 3, bx, bw = 140;
+    int32_t pos = clamp(t->p[P_E2], 0, 127), mix = clamp(t->p[P_E3], 0, 127), x, k, W = 234, X0 = 3, bx;
     uint32_t w[2] = {(uint32_t)clamp(t->p[P_E0], 1, 63) - 1u, (uint32_t)clamp(t->p[P_E1], 1, 63) - 1u}, cur;
     static const char *const FT[9] = {"LP12", "BP12", "HP12", "LP24", "BP24", "HP24", "R-VNT", "M-VNT", "S-VNT"};
     sound_name(t, nm);
@@ -2222,7 +2361,7 @@ static void draw_graph(void)
             break;
 #endif
         default:
-            if (pg->scope == SC_ENGINE && t->eng_req % NENGINES == ENGI_WT) { cv_oy = 0; graph_wt(t, c); break; }
+            if ((pg->scope == SC_ENGINE || pg->own == ENGI_WT + 1u) && t->eng_req % NENGINES == ENGI_WT) { cv_oy = 0; graph_wt(t, c); break; }
             cv_oy = 0;
             graph_scope(c);
             break;
