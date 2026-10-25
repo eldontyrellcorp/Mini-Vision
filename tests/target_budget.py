@@ -24,7 +24,8 @@ FUNCS = ["slicer_track",
          "rev_room", "rev_spring", "rev_hall", "rev_elek", "rev_side_mix", "dly_side_mix",   # the reverb bus (fx.c): REVERB TYPE ROOM / SPRING / HALL / ELEK (and its stereo), the ping-pong side
          "track_insert", "ins_drive", "ins_swept",           # the per-track INSERT (fx.c, 1.5), while a TYPE plays
          "t8_bd_run", "t8_sd_run", "t8_tom_run", "t8_cl_run", "t8_ma_run", "t8_cp_run", "t8_rs_run", "t8_bank_run",   # TR808: the voices
-         "t8_cb_run", "t8_hat_run", "t8_cy_run", "t8_render"]
+         "t8_cb_run", "t8_hat_run", "t8_cy_run", "t8_render",
+         "wt_render"]                                       # WTSYNTH: two wavetable layers, the wave shaper, the filter
 # absent from a FELUCCA_UAC_48K=0 or FELUCCA_UAC=0 build: skipped; present, checked against this
 OPTIONAL = {"uac_tap48": 504}           # (absent from a FELUCCA_UAC_48K=0 or FELUCCA_UAC=0 build)
 TOL = 0.10                      # exact (no noise): small edits pass, a grown render loop does not

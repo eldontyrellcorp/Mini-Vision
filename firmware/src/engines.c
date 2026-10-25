@@ -73,6 +73,7 @@ static const char *drum_lane_abbr(const track_t *t, uint32_t l)
     return N[l & (NLANE - 1u)];
 }
 
+#include "eng_wt.c"             /* WTSYNTH: two wavetable layers, a wave shaper, a resonant filter (mini-vision's own) */
 #if FELUCCA_TEST_ENGINE
 #include "eng_testsynth.c"      /* TESTSYNTH: a saw voice, for the host tests */
 #endif
@@ -83,7 +84,7 @@ static const char *drum_lane_abbr(const track_t *t, uint32_t l)
 /* The engines that are removed: every one of Mini-Tone's but TR808 (24). The stores name engines by index and the table is
  * append-only, so their numbers stay: a sound that names one loads with its values as they were and plays silence
  * (ENG_GONE), and the engine is never offered (eng_ok). */
-#define ENG_REMOVED_MASK (((1u << 24) - 1u) & ~((uint32_t)FELUCCA_TEST_ENGINE << 12) & ~((uint32_t)FELUCCA_TEST_ENGINE << 10))
+#define ENG_REMOVED_MASK (((1u << 24) - 1u) & ~(1u << 13) & ~((uint32_t)FELUCCA_TEST_ENGINE << 12) & ~((uint32_t)FELUCCA_TEST_ENGINE << 10))
 static void gone_note_on(track_t *t, voice_t *v) { (void)t; (void)v; }
 static void gone_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const vmod_t *m)
 {
@@ -110,9 +111,9 @@ static const engine_t *const ENGINES[NENGINES] = {
 #endif
     &ENG_GONE,   /* 6..11 */
 #if FELUCCA_TEST_ENGINE
-    &ENG_TESTSYNTH, &ENG_GONE, &ENG_GONE, &ENG_GONE, &ENG_GONE, &ENG_GONE,   /* 12 (the host tests' melodic engine), 13..17 */
+    &ENG_TESTSYNTH, &ENG_WT, &ENG_GONE, &ENG_GONE, &ENG_GONE, &ENG_GONE,   /* 12 (the host tests' melodic engine), 13 (WTSYNTH), 14..17 */
 #else
-    &ENG_GONE, &ENG_GONE, &ENG_GONE, &ENG_GONE, &ENG_GONE, &ENG_GONE,   /* 12..17 */
+    &ENG_GONE, &ENG_WT, &ENG_GONE, &ENG_GONE, &ENG_GONE, &ENG_GONE,   /* 12, 13 (WTSYNTH), 14..17 */
 #endif
     &ENG_GONE, &ENG_GONE, &ENG_GONE, &ENG_GONE, &ENG_GONE, &ENG_GONE,   /* 18..23 */
     &ENG_TR808,                  /* 24 (ENGI_TR808) */
@@ -155,6 +156,7 @@ static const uint8_t ENGINE_ORDER[NENG_SHOWN] = {
     12,                          /* TESTSYNTH */
     10,                          /* TESTDRUM */
 #endif
+    13,                          /* WTSYNTH */
     24,                          /* TR808 */
 };
 
@@ -166,7 +168,7 @@ static uint32_t eng_rank(uint32_t e)
 {
     uint32_t n;
     if (!eng_ok(e))
-        e = ENGI_TR808;
+        e = ENGI_WT;
     for (n = 0; n < NENG_SHOWN && ENGINE_ORDER[n] != e; n++)
         ;
     return n < NENG_SHOWN ? n : 0u;
@@ -223,6 +225,6 @@ static const struct {
 #if FELUCCA_TEST_ENGINE
 static const uint8_t TRK_DEF[NPART][3] = {{ENGI_TESTSYNTH, 2, 0}, {ENGI_TESTSYNTH, 4, 0}, {ENGI_TESTSYNTH, 3, 0}, {ENGI_DRUM, 0, 0}, {ENGI_TESTSYNTH, 0, 0}, {ENGI_TESTSYNTH, 1, 0}};
 #else
-static const uint8_t TRK_DEF[NPART][3] = {{ENGI_TR808, 0, 0}, {ENGI_TR808, 0, 0}, {ENGI_TR808, 0, 0}, {ENGI_TR808, 0, 0}, {ENGI_TR808, 0, 0}, {ENGI_TR808, 0, 0}};
+static const uint8_t TRK_DEF[NPART][3] = {{ENGI_WT, 3, 0}, {ENGI_WT, 1, 0}, {ENGI_WT, 0, 0}, {ENGI_TR808, 0, 0}, {ENGI_WT, 2, 0}, {ENGI_WT, 5, 0}};
 #endif
 static uint32_t trk_def_engine(uint32_t i) { return TRK_DEF[i % NPART][0]; }

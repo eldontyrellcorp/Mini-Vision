@@ -656,12 +656,12 @@ enum { S_HOME, S_HOME_IDLE, S_MESSAGE, S_MESSAGE_KEY, S_PRESETS, S_PRESETS_NOFAV
        S_ENV_SYNC, S_ENV_DEST_SYNC, S_FILTER,
        S_LEARN_WAIT, S_LEARN_PICK, S_LEARN_SET, S_LEARN_LONG, S_GLO_LEARN, S_MENU_LCLEAR, S_MENU_LCLEAR_NONE, S_REVERB_ELEK, S_REVERB_ELEK2,
        S_ROLL_SHEET, S_ROLL_SHEET_FORCE, S_ROLL_SHEET_NONE, S_ROLL_SHEET_CHORD, S_ROLL_SHEET_LAST, S_ROLL_ZOOM8, S_ROLL_ZOOM32,
-       S_ROLL_ZOOM64, S_DRUM_SHEET, S_DRUM_SHEET_LAST, S_GLO_FILL, S_GLO_FILL_ARMED, S_HOME_TRACKS_SECTION, S_HOME_T6, S_MIXER_T6, S_SONG_SIX, S_COUNT };
+       S_ROLL_ZOOM64, S_DRUM_SHEET, S_DRUM_SHEET_LAST, S_GLO_FILL, S_GLO_FILL_ARMED, S_HOME_TRACKS_SECTION, S_HOME_T6, S_MIXER_T6, S_SONG_SIX, S_WT_EDIT1, S_WT_EDIT2, S_WT_OSCENV, S_WT_FILTER, S_COUNT };
 static const char *const S_NAME[S_COUNT] = {"home", "home_idle", "message", "message_key", "presets", "presets_nofav", "user",
     "phrases", "project", "tools", "song_empty", "song", "step", "auto_steps", "auto_add_chance", "automation", "drum",
     "drum_hand", "drum_cym", "mixer", "mixer_from_home", "mixer_pan", "env", "env_dest", "lfo", "mod", "fx", "slicer", "dly", "scl", "chord", "chord_wide", "chord_off", "chord_kit", "arp",
     "voice", "clock", "menu_midi", "edit_default", FELUCCA_FM4 ? "edit_digital" : "edit_fm6", "op_env", "edit_sid", "edit_chip",
-    "edit_dual", "edit_swarm", "alg_1", "alg_2", "alg_3", "alg_4", "alg_5", "alg_6", "alg_7", "alg_8", "op_level", "fm6_alg_01", "fm6_alg_05", "fm6_alg_22", "fm6_alg_32", "fm6_op", "fm6_op_fixed", "fm6_op2", "fm6_op_env", "fm6_op_env_rel", "confirm_seq", "confirm_project", "confirm_user", "confirm_pattern",
+    "edit_dual", "edit_swarm", "alg_1", "alg_2", "alg_3", "alg_4", "alg_5", "alg_6", "alg_7", "alg_8", "op_level", "confirm_seq", "confirm_project", "confirm_user", "confirm_pattern",
     "confirm_motion", "confirm_erase", "menu", "menu_speaker", "about", "about_rec", "about_credits", "about_end", "uboot", "calibration", "splash",
     "batt_0", "batt_1", "batt_2", "batt_3", "batt_usb", "motion_rec", "motion_off", "motion_card", "song_home",
     "perform_peek", "perform_held", "perform_wait", "perform_harm", "perform_mod", "perform_assign", "menu_hold", "menu_leds", "menu_end", "menu_system", "menu_slide", "reverb_spring",
@@ -682,7 +682,7 @@ static const char *const S_NAME[S_COUNT] = {"home", "home_idle", "message", "mes
     "insert_crush", "insert_fold", "insert_phaser", "insert_off", "insert_mix",
     "env_sync", "env_dest_sync", "filter",
     "learn_wait", "learn_pick", "learn_set", "learn_long", "layer_glo_learn", "menu_learn_clear", "menu_learn_clear_none", "reverb_elek", "reverb_elek2", "roll_sheet", "roll_sheet_force", "roll_sheet_none", "roll_sheet_chord", "roll_sheet_last", "roll_zoom8", "roll_zoom32",
-    "roll_zoom64", "drum_sheet", "drum_sheet_last", "layer_glo_fill", "layer_glo_fill_next", "home_tracks_section", "home_track6", "mixer_track6", "song_six"};
+    "roll_zoom64", "drum_sheet", "drum_sheet_last", "layer_glo_fill", "layer_glo_fill_next", "home_tracks_section", "home_track6", "mixer_track6", "song_six", "wt_edit1", "wt_edit2", "wt_oscenv", "wt_filter"};
 
 /* the STEP page's piano roll (ui_graph.c graph_roll) on track 1, stopped unless said: an empty pattern; ACID in
  * A minor; POLY chords (Am7 F C G, tied); a line with ties, slides and accents in C major; LEN 32 on its second
@@ -1126,6 +1126,10 @@ static void setup(int s)
         go_title(s == S_REVERB_ELEK ? "ELEK REV" : "ELEK REV 2");
         ui.hot_col = 0; ui.hot_t = 30;
         break;
+    case S_WT_EDIT1: eng(ENGI_WT); TSEL->p[P_E0] = 13; TSEL->p[P_E1] = 30; TSEL->p[P_E2] = 45; TSEL->p[P_E3] = 50; go_title("EDIT 1"); ui.hot_col = 2; ui.hot_t = 30; break;
+    case S_WT_EDIT2: eng(ENGI_WT); TSEL->p[P_E0] = 26; TSEL->p[P_E1] = 9; TSEL->p[P_E2] = 90; TSEL->p[P_E3] = 90; TSEL->p[P_E6] = 40; go_title("EDIT 2"); break;
+    case S_WT_OSCENV: eng(ENGI_WT); go_title("OSC ENV"); break;
+    case S_WT_FILTER: eng(ENGI_WT); go_title("FILTER"); break;
     case S_HOME_T6: song.playing = 0; song.sel = 5; go_home(); break;     /* six tracks: HOME's window 3..6 */
     case S_MIXER_T6:
         go_page(GR_TRK); song.sel = 5;

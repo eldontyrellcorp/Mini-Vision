@@ -3,8 +3,15 @@
 A fork of [Mini-Tone](https://github.com/) 1.0.4 (GPL-3.0-only) that is becoming a wavetable synthesizer after Roland's n/vision
 (specifications gathered in `docs/NVISION_SPECS.md`; the wavetable generator: `tools/gen_nvision_wt.py`). Where it stands:
 
-- **Every engine of Mini-Tone is gone but TR808.** The engine numbers are kept (the stores and the editor protocol name engines by
-  index): the removed ones are `ENG_GONE` entries that play silence, TR808 is still engine 24. The image is 306 kB (571 kB before).
+- **WTSYNTH (engine 13, `firmware/src/eng_wt.c`) is the synth.** Two wavetable layers (WAV1, WAV2 of 63 tables, 8 key frames each, 5 mip
+  levels, 8 bit: `tools/gen_nvision_wt.py` makes them at build time, 252 kB), one POSITION through the frames, MIX and OCT2 between the
+  layers, RANGE, a sine-fold wave shaper (WS), phase modulation (PM), the resonant filter (LP / BP / HP, CUT, RES, KEY), an oscillator
+  AD envelope that moves the position and the mix (OSC ENV), and the track's ENV / LFO / matrix pages on top. Its EDIT pages draw the two
+  waveforms. 16 presets. `tests/wt_test.c` checks it. The app slot is 563.9 kB of 581.6: **17.6 kB left**.
+  Not yet (n/vision has them): 24 dB and the vintage filters, the HPF, the filter drive, the wave shaper's tables, P-MOD's X / Y,
+  the step LFO, the drawing mode, SPREAD, the EQ, the MFX chorus effects, 56 voices (8 here).
+- **Every other engine of Mini-Tone is gone but TR808.** The engine numbers are kept (the stores and the editor protocol name engines by
+  index): the removed ones are `ENG_GONE` entries that play silence, TR808 is still engine 24. The image was 306 kB before WTSYNTH (571 kB in Mini-Tone).
 - **FM6's room in the project format is kept** (`FM6_PACKED`, 128 bytes a track, zeros): the stored formats keep their sizes; it is free
   for the next engine's per-track data.
 - **The host tests run with a melodic engine and a drum-grid engine of their own** (`firmware/src/eng_testsynth.c`, `FELUCCA_TEST_ENGINE=1`,

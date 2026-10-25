@@ -1059,7 +1059,7 @@ static const char *eng_abbr(const char *name)
                                        {"PHASE", "PHAS"}, {"LOFI", "LOFI"},
                                        {"SAMPLE", "SMPL"}, {"VOICE", "VOCL"}, {"TRIO", "TRIO"}, {"WHEEL", "WHEL"},
                                        {"GRAIN", "GRAN"}, {"PHYS", "PHYS"}, {"DRUM", "DRUM"},
-                                       {"NOISE", "NOIS"}, {"FM6", "FM6"}, {"SLICE", "SLCE"}, {"SWARM", "SWRM"}, {"FMTONE", "FMTN"}, {"WAVETONE", "WVTN"}, {"FMDRUM", "FMDR"}, {"SID", "SID"}, {"CHIP", "CHIP"}, {"DUALVCO", "DUAL"}, {"ANALOG4", "ANA4"}, {"BRAIDS", "BRAI"}, {"TB303", "TB30"}, {"TR808", "T808"}};
+                                       {"NOISE", "NOIS"}, {"FM6", "FM6"}, {"SLICE", "SLCE"}, {"SWARM", "SWRM"}, {"FMTONE", "FMTN"}, {"WAVETONE", "WVTN"}, {"FMDRUM", "FMDR"}, {"SID", "SID"}, {"CHIP", "CHIP"}, {"DUALVCO", "DUAL"}, {"ANALOG4", "ANA4"}, {"BRAIDS", "BRAI"}, {"TB303", "TB30"}, {"TR808", "T808"}, {"WTSYNTH", "WTSY"}};
     uint32_t i;
     for (i = 0; i < sizeof A / sizeof A[0]; i++)
         if (str_eq(name, A[i][0]))
@@ -2024,6 +2024,37 @@ static void graph_song(void)
                      i < 4u ? "[K3] ADD SECTION" : "[SAVE] PROJECT A-D", T_MID, T_SURF, x0 - 10 - SG_X0);
     }
 }
+/* WTSYNTH's EDIT 1 and EDIT 2: the two layers' waveforms at the position knob (the first mip level of the frames in between), the
+ * second one's scaled by how much of it MIX lets through; the tables' names over them (WAV1 left, WAV2 right) */
+static void graph_wt(const track_t *t, uint16_t c)
+{
+    int32_t pos = clamp(t->p[P_E2], 0, 127) * 256, fq = (int32_t)(((int64_t)pos * 3613) >> 16), pf, mix = clamp(t->p[P_E3], 0, 127), cy = 66, x, l;
+    uint32_t f = (uint32_t)fq >> 8, w[2] = {(uint32_t)clamp(t->p[P_E0], 1, 63) - 1u, (uint32_t)clamp(t->p[P_E1], 1, 63) - 1u};
+    if (f >= NV_NFRAME - 1u) {
+        f = NV_NFRAME - 2u;
+        pf = 256;
+    } else {
+        pf = fq & 255;
+    }
+    cv_text_on(PANEL_X0 - 4, 0, &AF_S, NV_NAME[w[0]], c, T_SURF);
+    {
+        int32_t tw = text_w(&AF_S, NV_NAME[w[1]]);
+        cv_text_on(PANEL_X0 + PANEL_W + 4 - tw, 0, &AF_S, NV_NAME[w[1]], T_MID, T_SURF);
+    }
+    cv_rect(PANEL_X0, cy, PANEL_W, 1, T_RAISE);
+    for (l = 1; l >= 0; l--) {                                   /* (layer 2 first: layer 1 over it) */
+        const int8_t *b = NV_TAB[0] + (w[l] * NV_NFRAME + f) * ((1u << NV_LEN_LOG2[0]) + 1u);
+        int32_t py = 0, amp = 44 * (l ? (mix < 12 ? 12 : mix) : (127 - mix < 12 ? 12 : 127 - mix)) / 127;
+        for (x = 0; x < PANEL_W; x++) {
+            uint32_t i = (uint32_t)x * (1u << NV_LEN_LOG2[0]) / PANEL_W;
+            int32_t a = b[i], d = b[i + (1u << NV_LEN_LOG2[0]) + 1u], v = a * 256 + ((d - a) * pf), y = cy - (v * amp >> 15);
+            if (x)
+                cv_line_t(PANEL_X0 - 1 + x, py, PANEL_X0 + x, y, l ? T_MID : c, 2);
+            py = y;
+        }
+    }
+}
+
 static void draw_graph(void)
 {
     const page_t *pg = cur_page();
@@ -2137,6 +2168,7 @@ static void draw_graph(void)
             break;
 #endif
         default:
+            if (pg->scope == SC_ENGINE && t->eng_req % NENGINES == ENGI_WT) { cv_oy = 0; graph_wt(t, c); break; }
             cv_oy = 0;
             graph_scope(c);
             break;

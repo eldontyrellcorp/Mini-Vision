@@ -319,6 +319,8 @@ if [ -f build/gen/felucca_tables.h ]; then
     "$OUT/descdump" > "$OUT/desc.json" || fail=1
     $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/poly_test" tests/poly_test.c -lm
     run "POLY: tracks of LEN 7 / 16, 15 / 4, 5 / 3, 1 / 64 cycle on their own and meet every lcm steps" "$OUT/poly_test"
+    $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/wt_test" tests/wt_test.c -lm
+    run "WTSYNTH: pitch (RANGE, OCT2), the tables (a sine, POSITION morphs to a saw, MIX, no aliasing at the top), WS, PM, the filter, the oscillator envelope, ENV -> SHAPE, levels, determinism, voices" "$OUT/wt_test"
     $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/tr808_test" tests/tr808_test.c -lm
     run "TR808: the 8W8 module's 16 voices in fixed point against its own renders (peak, levels, pitch), TUNE / DECY / velocity / LEVEL / DRV, the hats' choke, a hit on a ringing drum, ends, presets, the EDIT pages" "$OUT/tr808_test"
     $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/elek_rev_test" tests/elek_rev_test.c -lm

@@ -78,6 +78,7 @@ static const char *const N_ENGNAME[NENGINES] = {
     [0 ... 23] = "-",
     [10] = FELUCCA_TEST_ENGINE ? "DRUM" : "-",             /* (the host tests' grid engine) */
     [12] = FELUCCA_TEST_ENGINE ? "TESTSYNTH" : "-",       /* (the host tests' melodic engine) */
+    [13] = "WTSYNTH",
     [24] = "TR808",
 };
 
@@ -554,7 +555,8 @@ static const page_t PAGES[] = {
     {"FILTER", FAM_EDIT, SC_TRACK, GR_NONE, {P_FTYPE, P_FM4_SUS, P_FM4_REL, P_FM4_LEVEL}, 16},
     {"FILTER", FAM_EDIT, SC_TRACK, GR_NONE, {P_FTYPE, P_FM3_SUS, P_FM3_REL, P_FM3_LEVEL}, 17},
     {"FILTER", FAM_EDIT, SC_TRACK, GR_NONE, {P_FTYPE, P_FM1_SUS, P_FM1_REL, P_FM1_LEVEL}, 20},   /* CHIP's */
-    {"FILTER", FAM_EDIT, SC_TRACK, GR_NONE, {P_FTYPE, P_FM1_SUS, P_FM1_REL, P_FM1_LEVEL}, 21},   /* DUALVCO's */
+    {"OSC ENV", FAM_EDIT, SC_TRACK, GR_NONE, {P_FM2_ATK, P_FM2_DEC, P_FM2_REL, P_FM3_REL}, 14},   /* WTSYNTH's: A D TO POS TO MIX */
+    {"FILTER", FAM_EDIT, SC_TRACK, GR_NONE, {P_FTYPE, P_FM1_SUS, P_FM1_REL, P_FM1_LEVEL}, 14},   /* WTSYNTH's */
     /* FMDRUM's (eng_fmdrum.c), own = 18 */
     {"RATIOS", FAM_EDIT, SC_TRACK, GR_NONE, {P_FM1_ATK, P_FM1_DEC, P_FM1_REL, P_FM1_SUS}, 18},
     {"FM MOD", FAM_EDIT, SC_TRACK, GR_NONE, {P_FM2_ATK, P_FM2_DEC, P_FM2_REL, 0xFF}, 18},

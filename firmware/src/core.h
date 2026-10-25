@@ -35,7 +35,7 @@
 #endif
 #define NENGINES 25
 #define ENGI_DIGITAL 1u          /* reserved: never selectable (eng_ok) */
-#define NENG_SHOWN (1 + 2 * FELUCCA_TEST_ENGINE)             /* the engines one can pick: PRESETS, the EDIT layer, the editor, in the display order of
+#define NENG_SHOWN (2 + 2 * FELUCCA_TEST_ENGINE)             /* the engines one can pick: PRESETS, the EDIT layer, the editor, in the display order of
                                   * engines.c ENGINE_ORDER */
 /* The projects keep the room FM6's patches had (project.c: 128 bytes a track just before the name), so the stored formats
  * keep their sizes; nothing writes it now (zeros) and the room is free for the next engine's per-track data. */

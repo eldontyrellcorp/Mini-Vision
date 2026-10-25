@@ -219,6 +219,7 @@ static const uint8_t MIDI_CC_MAP[][2] = {
 /* per engine (ENGINES[] order): CC74's E index + 1 in the high nibble, CC71's in the low one, 0 = none */
 static const uint8_t MIDI_CC_ENG[NENGINES] = {
     [10] = 0x30,                                      /* TESTDRUM TONE */
+    [13] = 0x34,                                      /* WTSYNTH POS (CC74), MIX (CC71) */
     [24] = 0x21,                                      /* TR808 DECY (CC74), TUNE (CC71) */
 };
 /* a CC sets parameter id of track t as a knob would: 0..127 over its range */

@@ -106,6 +106,7 @@ static void host_preset_values(track_t *t, uint32_t e, uint32_t pi, const preset
     t->p[P_VOICE] = p->mono ? V_LEGATO : V_POLY;
     for (i = 0; i < 4u; i++)
         t->p[P_DIST + i] = (int16_t)(p->fx[i] ? p->fx[i] - 1 : FX_DEF[i]);
+    wt_track_loaded(t);                           /* WTSYNTH: the preset's filter and oscillator envelope */
 #if FELUCCA_TR808
     t8_track_loaded(t);                           /* TR808: the voices' levels */
 #endif

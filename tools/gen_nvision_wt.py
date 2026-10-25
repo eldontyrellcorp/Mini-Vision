@@ -12,7 +12,7 @@
 A table is `--frames` keyframes (default 8) of one cycle; the synth interpolates between them over its 0..127
 POSITION. Each frame is built in the time domain at 2048 points, then band limited by an FFT at the mip levels
 (LEVELS: a harmonic cap H and a length N, as WAVETONE's gen_tables.py) so the pitch picks the level and nothing
-aliases. Every frame has no DC and the RMS 0.5 of full scale if its peak allows (a peak of 0.9 at most: a narrow
+aliases. Every frame has no DC and the RMS 0.5 of full scale (as the first mip level plays it) if its peak allows (a peak of 0.9 at most: a narrow
 pulse or a crackle comes out quieter), so the morph keeps its loudness.
 
   tools/gen_nvision_wt.py [--out build/gen/nvision_wt.h] [--frames 8] [--bits 8|16] [--preview DIR]
@@ -298,7 +298,12 @@ def all_tables():
 
 # ----------------------------------------------------------------------------------------------- output
 def normalise(w):
-    w = w - np.mean(w)
+    """no DC, then the level of the frame as the first mip level plays it (its harmonics up to LEVELS[0]'s cap): a noisy frame is
+    not made quiet by the band limiting that follows"""
+    sp = np.fft.rfft(w)
+    sp[0] = 0
+    sp[LEVELS[0][0] + 1:] = 0
+    w = np.fft.irfft(sp, N0)
     rms = math.sqrt(np.mean(w ** 2)) or 1.0
     s = min(0.5 / rms, 1.0 / max(np.max(np.abs(w)), 1e-9)) * 0.9
     return w * s
