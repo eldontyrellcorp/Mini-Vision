@@ -22,6 +22,7 @@ static int st_prog(uint32_t off, const void *src, uint32_t n)
         nor[off + i] &= s[i];
     return 0;
 }
+static int eng_ok(uint32_t e) { return e < NENGINES; }   /* (engines.c: the test uses every number) */
 #include "../firmware/src/storage.c"
 #include "../firmware/src/upreset.c"
 

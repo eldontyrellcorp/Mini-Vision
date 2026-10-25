@@ -1429,7 +1429,7 @@ static void draw(int s)
     }
     if (s == S_SPLASH) {                          /* the power-on splash (main.c, before the UI): its lines, the version
                                                    * shown FELUCCA_VERSION (run_tests.sh: src/felucca.c's) */
-        static const char WANT[] = "Mini-Tone|" FELUCCA_VERSION "|Stephane Schmitz|based on Felucca";
+        static const char WANT[] = "mini-vision|" FELUCCA_VERSION "|Stephane Schmitz|based on Felucca";
         splash_seen[0] = 0;
         in_splash = 1;
         draw_splash();

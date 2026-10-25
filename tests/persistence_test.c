@@ -524,6 +524,7 @@ int main(void)
     memset(&r, 0, sizeof r);
     r.used = UP_USED;
     r.ver = UP_VER;
+    r.engine = ENGI_TR808;                                 /* (a removed engine's sound is not a sound any more) */
     r.np = P_COUNT;
     memcpy(r.name, "First", 6);
     erase_error = 1;

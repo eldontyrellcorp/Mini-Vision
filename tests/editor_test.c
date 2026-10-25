@@ -453,10 +453,10 @@ static int user_preset_roundtrip(void)
     uint32_t k = 0, i, p, ok, n;
     int bad = 0;
     reset();
-    a[k++] = 3; a[k++] = 0;                                /* slot U04, ANALOG */
+    a[k++] = 3; a[k++] = ENGI_WT;                          /* slot U04, WTSYNTH */
     memcpy(a + k, "ROUND", 5); k += 5; a[k++] = 0;
     for (i = 0; i < P_COUNT; i++) {
-        const param_desc_t *d = param_desc_of(0, i);
+        const param_desc_t *d = param_desc_of(ENGI_WT, i);
         int16_t v = d->def;
         uint32_t u;
         if (i == P_LEVEL) v = 90;
@@ -476,14 +476,14 @@ static int user_preset_roundtrip(void)
     bad += check("UP_PUT keeps every value (PAN -20, FLT -40, min and max)", ok);
     a[0] = 3;
     request(ED_UP_GET, a, 1);
-    ok = host_wire[5] == 3 && host_wire[6] == 1 && host_wire[7] == 0 && !memcmp(host_wire + 8, "ROUND", 6);
+    ok = host_wire[5] == 3 && host_wire[6] == 1 && host_wire[7] == ENGI_WT && !memcmp(host_wire + 8, "ROUND", 6);
     for (i = 0, p = 14; i < P_COUNT; i++, p += 2u)
         ok &= (int32_t)(host_wire[p] | host_wire[p + 1] << 7) - 8192 == want[i];
     for (i = 0; i < 16u; i++, p += 2u)
         ok &= host_wire[p] == (i & 1u ? 0u : 48u + i);
     bad += check("UP_GET returns the values and the pattern UP_PUT sent", ok);
-    bad += check("  .. then kind 0 and (1.2) the category: none sent, ANALOG's (OTHER)",
-                 host_wire[p] == 0u && host_wire[p + 1u] == CAT_OTHER && host_wire[p + 2u] == 0xF7);
+    bad += check("  .. then kind 0 and (1.2) the category: none sent, the slot's own",
+                 host_wire[p] == 0u && host_wire[p + 1u] == up_cat(3) && host_wire[p + 2u] == 0xF7);
     {   /* 1.2 (Discussion #90): UP_PUT's category after the kind's 16 bytes; UP_LIST lists the categories after the slots */
         uint32_t k0 = k;
         a[k++] = 0;
