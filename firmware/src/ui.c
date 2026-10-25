@@ -410,6 +410,8 @@ static int page_visible(uint32_t i)
             }
         return i == first || (i == first + 4u || i == first + 5u ? TSEL->stoch.euc_on : TSEL->stoch.on);
     }
+    if (PAGES[i].graph == GR_STEP2)                   /* the melodic step edit: not on a grid track */
+        return !drum_track(TSEL);
     return page_for_engine(i, TSEL->eng_req % NENGINES);   /* (params.c: the engine's pages) */
 }
 

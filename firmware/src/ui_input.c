@@ -1245,6 +1245,20 @@ static void step_edit(uint32_t slot, int32_t steps)
         grid_edit(slot, steps);
         return;
     }
+    if (cur_page()->graph == GR_STEP2) {                  /* STEP 2: STEP (the cursor), VEL, PROB, RATCH of the step */
+        if (slot == 0u) {
+            cursor_set((int32_t)clamp((int32_t)ui.cursor + steps, 0, clamp(TSEL->p[P_SLEN], 1, NSTEP) - 1));
+        } else if (slot == 1u) {
+            int32_t v = (st->vel ? st->vel : 96) + steps;
+            v = clamp(v, 1, 127);
+            st->vel = (uint8_t)(v == 96 ? 0 : v);
+        } else if (slot == 2u) {
+            step_set_chance(st, (uint32_t)clamp((int32_t)step_chance(st) + steps * 5, 0, 100));
+        } else {
+            step_set_ratchet(st, (uint32_t)clamp((int32_t)step_ratchet(st) + (steps > 0 ? 1 : -1), 1, 4));
+        }
+        return;
+    }
     switch (slot) {
     case 0:                                               /* START: the note's, step and fine (PRESETS: the cursor) */
         start_turn(steps);

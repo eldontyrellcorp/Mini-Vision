@@ -1163,6 +1163,23 @@ static void draw_columns(void)
         draw_column(3, "ACC", ac ? "ON" : "--", "", ac ? VAL(3u) : T_DIM, -1, ICON_AUTO);
         return;
     }
+    if (cur_page()->graph == GR_STEP2) {                  /* STEP 2: STEP VEL PROB RATCH */
+        const step_t *st = &seq_steps(TSEL)[ui.cursor];
+        char sn[8], sl[8];
+        int32_t vl = st->vel ? st->vel : 96;
+        fmt_int(sn, (int32_t)ui.cursor + 1);
+        str_cpy(sl, "/", 8);
+        fmt_int(sl + 1, TSEL->p[P_SLEN]);
+        draw_column(0, "STEP", sn, sl, VAL(0u), -1, ICON_AUTO);
+        fmt_int(sn, vl);
+        draw_column(1, "VEL", sn, "", step_on(st) ? VAL(1u) : T_DIM, vl * 1000 / 127, ICON_AUTO);
+        fmt_int(sn, (int32_t)step_chance(st));
+        draw_column(2, "PROB", sn, "%", VAL(2u), (int32_t)step_chance(st) * 10, ICON_AUTO);
+        fmt_int(sn, (int32_t)step_ratchet(st));
+        str_cpy(sn + str_len(sn), "x", 4);
+        draw_column(3, "RATCH", sn, "", VAL(3u), ((int32_t)step_ratchet(st) - 1) * 333, ICON_AUTO);
+        return;
+    }
     if (cur_page()->scope == SC_STEP) {
         static const char *const TIME_N[3] = {"NOTE", "TIE", "REST"};
         const step_t *st = &seq_steps(TSEL)[ui.cursor];

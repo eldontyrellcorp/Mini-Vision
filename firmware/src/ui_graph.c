@@ -1054,6 +1054,10 @@ static uint32_t graph_signature(void)
 #if FELUCCA_SLICE
     if (pg->graph == GR_SLICES && slice_page_ok()) h ^= slice_sig();
 #endif
+    if (pg->graph == GR_STEP2)
+        h = (h ^ ui.cursor * 7919u ^ ui.bank) * 16777619u + fnv(0, &seq_steps(t)[ui.cursor], sizeof(step_t));
+    if (pg->graph == GR_STEPS)
+        h = (h ^ (song.playing ? t->seq_idx + 1u : 0u)) * 16777619u + steps_hash(t);
     if (pg->graph == GR_ROLL) {
         uint32_t ph = song.playing ? t->seq_idx : 0xFFFFu;
         if (ph < pr_base() || ph >= pr_base() + pr_nv())
@@ -2112,18 +2116,16 @@ static void wt_filter(const track_t *t, int32_t x0, int32_t w, int32_t y0, int32
         qi = qi * (ty == 6 ? 10 : ty == 7 ? 8 : 6) / 10;
     cv_rect(x0, y0 + 12 * h / 60, w, 1, T_RAISE);                 /* 0 dB */
     for (x = 0; x < w; x++) {
-        int32_t w2 = wt_exp2_q10((x - (xc - x0)) * 2 * 256 / 24), d1 = 1024 - w2, den = ((d1 * d1) >> 10) + ((w2 * qi >> 10) * qi >> 10), num, db, y;
-        int64_t m2;
+        int32_t w2 = wt_exp2_q10((x - (xc - x0)) * 2 * 256 / 24), d1 = 1024 - w2, den = ((d1 * d1) >> 10) + ((w2 * qi >> 10) * qi >> 10), num, db, y, lm;
         num = kind == 0 ? 1024 : kind == 1 ? (w2 * qi >> 10) * qi >> 10 : (w2 * w2) >> 10;
         if (den < 1)
             den = 1;
-        m2 = ((int64_t)num << 16) / den;
+        lm = (num < 1 ? -2000 : wt_log2_q4((uint32_t)num)) - wt_log2_q4((uint32_t)den);   /* log2 of the power gain, 1/16 */
         if (db24)
-            m2 = (m2 * m2) >> 16;
-        if (m2 < 1)
-            m2 = 1;
-        db = wt_log2_q4((uint32_t)(m2 > 0x3FFFFFF ? 0x3FFFFFF : m2)) - 16 * 16;   /* log2(m2) - 16: the level re 1 */
-        db = db * 301 / 1600;                                      /* in dB: 3.01 per octave of power */
+            lm *= 2;
+        db = lm * 301 / 1600;                                      /* in dB: 3.01 per octave of power */
+        if (db < -60)
+            db = -60;
         y = y0 + (12 - db) * h / 60;
         y = clamp(y, y0, y0 + h);
         if (x)
@@ -2217,6 +2219,82 @@ static void graph_wt(const track_t *t, uint16_t c)
     cv_text_fit(X2 + 4, 103, &AF_S, NV_NAME[clamp(t->p[P_E1], 1, 63) - 1], T_TEXT, T_SURF, BW - 4);
     wt_ruler(pos, 83);
     (void)mix;
+}
+
+/* STEP 2 (the n/vision step edit): the step's number and notes, four note slots (the step's velocity under each), bars for
+ * VEL and PROB, the RATCH pips */
+static void se_bar(int32_t y, const char *label, int32_t v, int32_t max, const char *val, uint16_t col, int on)
+{
+    cv_text_on(8, y - 3, &AF_S, label, T_MID, T_SURF);
+    cv_rect(60, y, 140, 6, T_RAISE);
+    if (on && v > 0)
+        cv_rect(60, y, v * 140 / max, 6, col);
+    cv_text_r(232, y - 3, &AF_S, val, on ? col : T_MID, T_SURF);
+}
+static void graph_step2(const track_t *t)
+{
+    const step_t *st = &seq_steps(t)[ui.cursor];
+    char b[24], nm[8];
+    int32_t i, on = step_on(st) != 0, vl = st->vel ? st->vel : 96, ch = (int32_t)step_chance(st), ra = (int32_t)step_ratchet(st);
+    str_cpy(b, "STEP ", sizeof b);
+    fmt_int(b + 5, (int32_t)ui.cursor + 1);
+    cv_text_on(8, 4, &AF_M, b, T_TEXT, T_SURF);
+    str_cpy(b, on ? "NOTES " : st->time == ST_TIE ? "TIE" : "REST", sizeof b);
+    if (on)
+        fmt_int(b + 6, (int32_t)st->n);
+    cv_text_r(232, 6, &AF_S, b, T_MID, T_SURF);
+    for (i = 0; i < 4; i++) {
+        int32_t x = 8 + i * 58;
+        int has = on && (uint32_t)i < st->n;
+        wt_box(x, 26, 54, 34, has ? T_THEME : T_RAISE);
+        if (has) {
+            note_name(nm, st->note[i]);
+            cv_text_on(x + 6, 30, &AF_M, nm, T_THEME, T_SURF);
+            fmt_int(b, vl);
+            cv_text_on(x + 6, 46, &AF_S, b, T_MID, T_SURF);
+        } else {
+            cv_text_on(x + 24, 33, &AF_M, "+", T_RAISE, T_SURF);
+        }
+    }
+    fmt_int(b, vl);
+    se_bar(72, "VEL", vl, 127, b, T_THEME, on);
+    fmt_int(b, ch);
+    str_cpy(b + str_len(b), "%", 4);
+    se_bar(88, "PROB", ch, 100, b, T_ACCENT, on);
+    cv_text_on(8, 101, &AF_S, "RATCH", T_MID, T_SURF);
+    for (i = 0; i < 4; i++)
+        cv_rect(60 + i * 36, 104, 30, 6, i < ra && on ? T_L2 : T_RAISE);
+    fmt_int(b, ra);
+    str_cpy(b + str_len(b), "x", 4);
+    cv_text_r(232, 101, &AF_S, b, on ? T_L2 : T_MID, T_SURF);
+}
+/* PATTERN (SEQ held: LEN DIV SWG GATE): the pattern as up to 4 rows of 16 cells (steps with a note lit, the rest of the length
+ * dim, past the end dark, the playhead yellow), then a pair of beats as swing and the gate move them */
+static void graph_pattern(const track_t *t)
+{
+    int32_t len = clamp(t->p[P_SLEN], 1, NSTEP), sw = clamp(t->p[P_SSWING], 0, 100), gt = clamp(t->p[P_SGATE], 1, 127), i;
+    for (i = 0; i < 64; i++) {
+        uint16_t col;
+        int32_t x = 8 + (i % 16) * 14, y = 6 + (i / 16) * 12;
+        if (i >= len)
+            col = T_RAISE;
+        else if (song.playing && (uint32_t)i == t->seq_idx)
+            col = T_ACCENT;
+        else
+            col = step_on(&seq_steps(t)[i]) ? T_THEME : T_MID;
+        if (i >= len)
+            cv_rect(x, y + 4, 12, 2, col);
+        else
+            cv_rect(x, y, 12, 9, col);
+    }
+    cv_text_on(8, 60, &AF_S, "SWING", T_MID, T_SURF);
+    cv_text_on(8, 92, &AF_S, "GATE", T_MID, T_SURF);
+    for (i = 0; i < 8; i++) {                         /* the off beats move later by SWG */
+        int32_t x = 64 + i * 21 + ((i & 1) ? sw * 8 / 100 : 0);
+        cv_rect(x, 64, 4, 18, (i & 1) ? T_L2 : T_THEME);
+        cv_rect(64 + i * 21, 86, gt * 18 / 127 + 2, 5, (i & 1) ? T_L2 : T_THEME);
+    }
+    cv_rect(64, 84, 165, 1, T_RAISE);
 }
 
 static void sound_name(const track_t *t, char *b);
@@ -2323,6 +2401,14 @@ static void draw_graph(void)
                 graph_roll(t, c);
             if (ui.sheet)
                 graph_sheet(t);
+            break;
+        case GR_STEP2:
+            cv_oy = 0;
+            graph_step2(t);
+            break;
+        case GR_STEPS:
+            cv_oy = 0;
+            graph_pattern(t);
             break;
         case GR_STOCH:
             cv_oy = 0;

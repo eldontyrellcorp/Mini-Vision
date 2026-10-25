@@ -53,6 +53,8 @@ static const struct { const char *title, *hint; } HELP_PAGE[] = {
     {"ARP", "[K1]MODE[KEYS]CHORD[ARP]ARP 2"},
     {"ARP 2", "[K3]LATCH[K4]ORDER[ARP]ARP"},
     {"STEP", "[KEYS]WRITE[K1]START[EDIT]CLEAR"},
+    {"STEP 2", "[K1]STEP[K2]VEL[K3]PROB[K4]RATCH"},
+    {"PATTERN", "[K1]LENGTH[K2]DIV[K3]SWING[K4]GATE"},
     {"AUTOMATION", "[K1]ROW[OCT+]DO[EDIT]DELETE"},
     {"STOCH", "[K1]OFF/STOCH/EUCLID[OCT+]REROLL"},
     {"NOTES", "[K1]NOTE[K2]WEIGHT[OCT+]REROLL"},
