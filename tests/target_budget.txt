@@ -36,4 +36,4 @@ t8_cb_run 140
 t8_hat_run 233
 t8_cy_run 2338
 t8_render 2200
-wt_render 306
+wt_render 833

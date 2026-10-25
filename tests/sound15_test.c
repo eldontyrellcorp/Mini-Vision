@@ -195,9 +195,9 @@ static void test_filter(void)
     char msg[200];
     track_t *t = &trk[0];
 
-    check("TYPE: a track parameter LP BP HP, default LP (as before), not recordable (a setting)",
-          d->fmt == F_ENUM && d->min == 0 && d->max == 2 && d->def == 0 && str_eq(d->label, "TYPE") &&
-          str_eq(d->names[0], "LP") && str_eq(d->names[1], "BP") && str_eq(d->names[2], "HP") && !motion_param(P_FTYPE));
+    check("TYPE: a track parameter, LP12 BP12 HP12 as before (0..2) then LP24 BP24 HP24 LP.R LP.M LP.S, default LP12, not recordable (a setting)",
+          d->fmt == F_ENUM && d->min == 0 && d->max == 8 && d->def == 0 && str_eq(d->label, "TYPE") &&
+          str_eq(d->names[0], "LP12") && str_eq(d->names[1], "BP12") && str_eq(d->names[2], "HP12") && str_eq(d->names[8], "LP.S") && !motion_param(P_FTYPE));
     {
         uint32_t i, k = 0;
         for (i = 0; i < NPAGES; i++)

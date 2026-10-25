@@ -5,10 +5,10 @@ A fork of [Mini-Tone](https://github.com/) 1.0.4 (GPL-3.0-only) that is becoming
 
 - **WTSYNTH (engine 13, `firmware/src/eng_wt.c`) is the synth.** Two wavetable layers (WAV1, WAV2 of 63 tables, 8 key frames each, 5 mip
   levels, 8 bit: `tools/gen_nvision_wt.py` makes them at build time, 252 kB), one POSITION through the frames, MIX and OCT2 between the
-  layers, RANGE, a sine-fold wave shaper (WS), phase modulation (PM), the resonant filter (LP / BP / HP, CUT, RES, KEY), an oscillator
+  layers, RANGE, a sine-fold wave shaper (WS), phase modulation (PM), the voice filter (TYPE LP12 BP12 HP12, LP24 BP24 HP24 and three ladder low passes after a Roland, a Moog and a Sequential: LP.R LP.M LP.S; CUT, RES, KEY; DRIVE 0..3 on FILTER 2), an oscillator
   AD envelope that moves the position and the mix (OSC ENV), and the track's ENV / LFO / matrix pages on top. Its EDIT pages draw the two
-  waveforms. 16 presets. `tests/wt_test.c` checks it. The app slot is 563.9 kB of 581.6: **17.6 kB left**.
-  Not yet (n/vision has them): 24 dB and the vintage filters, the HPF, the filter drive, the wave shaper's tables, P-MOD's X / Y,
+  waveforms. 16 presets. `tests/wt_test.c` checks it. The app slot is 566.3 kB of 581.6: **15.3 kB left**.
+  Not yet (n/vision has them): the HPF, the wave shaper's tables, P-MOD's X / Y,
   the step LFO, the drawing mode, SPREAD, the EQ, the MFX chorus effects, 56 voices (8 here).
 - **Every other engine of Mini-Tone is gone but TR808.** The engine numbers are kept (the stores and the editor protocol name engines by
   index): the removed ones are `ENG_GONE` entries that play silence, TR808 is still engine 24. The image was 306 kB before WTSYNTH (571 kB in Mini-Tone).

@@ -162,7 +162,7 @@ static void engine_basics(void)
                 if (e == ENGI_WT)
                     n++;
             }
-    check("OSC ENV and FILTER show for WTSYNTH and for no other engine", ok && n == 2u);
+    check("OSC ENV, FILTER and FILTER 2 show for WTSYNTH and for no other engine", ok && n == 3u);
     ok = 1;
     for (k = 0; k < 8u; k++)
         ok &= ENG_WT.edit[k].label[0] != 0;
@@ -326,6 +326,109 @@ static void shaping(void)
     }
 }
 
+/* the filter's cutoff (Hz) for CUT c at KEY 0: dsp.c rsvf_coef's g = tan(pi fc / fs), RSVF_G in Q24 */
+static double cut_hz(int c) { return atan(RSVF_G[c] / 16777216.0) * FS / M_PI; }
+static int cut_for(double hz)
+{
+    int c, best = 0;
+    for (c = 0; c < 127; c++)
+        if (fabs(cut_hz(c) - hz) < fabs(cut_hz(best) - hz))
+            best = c;
+    return best;
+}
+/* ---- 4b. the filter types: 24 dB, the ladders, the drive ---- */
+static void filter_types(void)
+{
+    static const char *const TN[9] = {"LP12", "BP12", "HP12", "LP24", "BP24", "HP24", "LP.R", "LP.M", "LP.S"};
+    static double f0[NS];
+    int ok = 1, t, c = cut_for(450.0);
+    double fc = cut_hz(c), open_hi, att[9];
+    uint32_t h;
+    printf("wt: CUT %d is %.0f Hz\n", c, fc);
+    setup(); trk[0].p[P_E0] = 1; trk[0].p[P_E2] = 127; trk[0].p[WT_KEY] = 0; render(45, f0, NS); spectrum(f0, 8192);   /* a saw at 110 Hz */
+    h = (uint32_t)floor(4 * fc / 110.0 + 0.5);                                  /* the harmonic nearest 4 x the cutoff: two octaves up */
+    open_hi = band_power(110.0 * h, 3);
+    for (t = 0; t < 9; t++) {
+        setup(); trk[0].p[P_E0] = 1; trk[0].p[P_E2] = 127; trk[0].p[WT_KEY] = 0; trk[0].p[WT_CUT] = (int16_t)c; trk[0].p[P_FTYPE] = (int16_t)t;
+        render(45, y, NS); spectrum(y, 8192);
+        att[t] = db(sqrt(band_power(110.0 * h, 3) / open_hi));
+        printf("wt: %s at CUT %d: the %.0f Hz harmonic %.1f dB (4 x the cutoff)\n", TN[t], c, 110.0 * h, att[t]);
+    }
+    check("LP12 falls 24 dB two octaves over its cutoff (2 poles, Q 0.5), within 5 dB", att[0] < -19.0 && att[0] > -30.0);
+    check("LP24 falls about twice as far (4 poles)", att[3] < att[0] - 15.0 && att[3] > -62.0);
+    check("HP24 / BP24 are steeper than their 12 dB types on the far side too (the band-pass the highs, the high pass the lows)", att[4] < att[1] - 5.0);
+    ok = 1;
+    for (t = 6; t < 9; t++)
+        ok &= att[t] < -38.0 && att[t] > -62.0;
+    check("the ladders LP.R, LP.M, LP.S fall four poles (about 49 dB) at 4 x the cutoff", ok);
+    {   /* the resonance: a harmonic at the cutoff gains */
+        double pk[9];
+        int cf = cut_for(550.0);
+        setup(); trk[0].p[P_E0] = 1; trk[0].p[P_E2] = 127; trk[0].p[WT_KEY] = 0; render(45, f0, NS); spectrum(f0, 8192);
+        open_hi = band_power(550.0, 3);
+        ok = 1;
+        for (t = 0; t < 9; t++) {
+            if (t == 1 || t == 4 || t == 2 || t == 5)
+                continue;
+            setup(); trk[0].p[P_E0] = 1; trk[0].p[P_E2] = 127; trk[0].p[WT_KEY] = 0; trk[0].p[WT_CUT] = (int16_t)cf; trk[0].p[P_FTYPE] = (int16_t)t;
+            trk[0].p[WT_RES] = 0; render(45, y, NS); spectrum(y, 8192); pk[t] = db(sqrt(band_power(550.0, 3) / open_hi));
+            setup(); trk[0].p[P_E0] = 1; trk[0].p[P_E2] = 127; trk[0].p[WT_KEY] = 0; trk[0].p[WT_CUT] = (int16_t)cf; trk[0].p[P_FTYPE] = (int16_t)t;
+            trk[0].p[WT_RES] = 110; render(45, y, NS); spectrum(y, 8192);
+            printf("wt: %s at the cutoff: RES 0 %.1f dB, RES 110 %.1f dB\n", TN[t], pk[t], db(sqrt(band_power(550.0, 3) / open_hi)));
+            ok &= db(sqrt(band_power(550.0, 3) / open_hi)) > pk[t] + 6.0;
+        }
+        check("RES 110 lifts the harmonic on the cutoff by 6 dB or more over RES 0 (LP12, LP24 and the three ladders)", ok);
+    }
+    {   /* the three ladders are three sounds at a resonance */
+        static double la[NS], lb[NS], lc[NS];
+        int cf = cut_for(550.0);
+        uint32_t i;
+        double d01 = 0, d02 = 0, d12 = 0;
+        for (t = 6; t < 9; t++) {
+            setup(); trk[0].p[P_E0] = 4; trk[0].p[P_E2] = 90; trk[0].p[WT_KEY] = 0; trk[0].p[WT_CUT] = (int16_t)cf; trk[0].p[WT_RES] = 90;
+            trk[0].p[P_FTYPE] = (int16_t)t; render(45, t == 6 ? la : t == 7 ? lb : lc, NS / 2);
+        }
+        for (i = 4096; i < NS / 2; i++) {
+            d01 += (la[i] - lb[i]) * (la[i] - lb[i]); d02 += (la[i] - lc[i]) * (la[i] - lc[i]); d12 += (lb[i] - lc[i]) * (lb[i] - lc[i]);
+        }
+        d01 = sqrt(d01 / (NS / 2 - 4096)) / rms_of(lb, 4096, 8192); d02 = sqrt(d02 / (NS / 2 - 4096)) / rms_of(lb, 4096, 8192);
+        d12 = sqrt(d12 / (NS / 2 - 4096)) / rms_of(lb, 4096, 8192);
+        printf("wt: the ladders' difference at RES 90, against the Moog's level: R-M %.2f, R-S %.2f, M-S %.2f\n", d01, d02, d12);
+        check("LP.R, LP.M and LP.S differ from each other by 5 % or more at RES 90", d01 > 0.05 && d02 > 0.05 && d12 > 0.05);
+    }
+    {   /* stable and bounded at the top of RES, with and without DRIVE, on a chord's worth of notes */
+        uint32_t k;
+        int ok2 = 1;
+        for (t = 0; t < 9; t++)
+            for (k = 0; k < 4u; k++) {
+                static const int RS[4] = {0, 64, 127, 127}, DR[4] = {0, 0, 0, 3};
+                uint32_t i;
+                double pk;
+                setup(); trk[0].p[P_E0] = 4; trk[0].p[P_E1] = 20; trk[0].p[P_E2] = 90; trk[0].p[P_E3] = 60; trk[0].p[WT_KEY] = 127;
+                trk[0].p[WT_CUT] = 55; trk[0].p[P_FTYPE] = (int16_t)t; trk[0].p[WT_RES] = (int16_t)RS[k]; trk[0].p[WT_DRV] = (int16_t)DR[k];
+                render(48, y, NS);
+                pk = peak_of(y, NS);
+                for (i = 0; i < NS; i++)
+                    ok2 &= isfinite(y[i]);
+                ok2 &= pk < 1.0;
+                if (pk >= 1.0)
+                    printf("wt: %s RES %d DRIVE %d peak %.2f\n", TN[t], RS[k], DR[k], pk);
+            }
+        check("every TYPE at RES 0 / 64 / 127 (and DRIVE 3): finite and inside full scale", ok2);
+    }
+    {   /* the drive */
+        double h3a, h3b;
+        setup(); render(57, y, NS); spectrum(y, 8192);
+        h3a = band_power(660.0, 3) / band_power(220.0, 3);
+        setup(); trk[0].p[WT_DRV] = 3; render(57, y, NS); spectrum(y, 8192);
+        h3b = band_power(660.0, 3) / band_power(220.0, 3);
+        printf("wt: a sine, the 3rd harmonic: %.1f dB without the drive, %.1f dB with DRIVE 3\n", db(sqrt(h3a)), db(sqrt(h3b)));
+        check("DRIVE 3 saturates (a sine gets its 3rd harmonic above -25 dB) and DRIVE 0 does not (under -50 dB), the filter open", h3a < 1e-5 && h3b > 0.056);
+        setup(); render(57, y, NS); setup(); trk[0].p[WT_DRV] = 0; render(57, z, NS);
+        check("DRIVE 0, the filter open: the sound as it is", !memcmp(y, z, sizeof y));
+    }
+}
+
 /* ---- 5. levels, determinism, the voice ---- */
 static void levels(void)
 {
@@ -397,6 +500,7 @@ int main(void)
     pitch();
     tables();
     shaping();
+    filter_types();
     levels();
     printf("wt: %s\n", bad ? "FAILED" : "all ok");
     return bad != 0;

@@ -24,7 +24,7 @@ static const char *const N_SCALE[] = {"CHR", "MAJ", "MIN", "DOR", "MIX", "PEN", 
                                     "PHRY", "LYD", "LOC", "MEL", "BLUES", "WHOLE", "DIMHW", "DIMWH"};
 static const char *const N_ONOFF[] = {"OFF", "ON"};
 /* ANALOG's filter TYPE (1.5, #104; eng_analog.c): the SVF's low-pass (as always), band-pass, high-pass output */
-static const char *const N_FTYPE[] = {"LP", "BP", "HP"};
+static const char *const N_FTYPE[] = {"LP12", "BP12", "HP12", "LP24", "BP24", "HP24", "LP.R", "LP.M", "LP.S"};   /* WTSYNTH: 0..2 as before (2 poles), 3..5 4 poles, 6..8 ladders */
 /* ENV SYNC (1.5, #175; voice.c esync_coef): ATK DEC REL as note values of the tempo, shortest first. 0..127 split
  * evenly over these 25 (param_format's F_INT name list: value v is ESYNC_NAMES[v * 25 / 128]); ESYNC_UNITS: each in
  * 1/384 of a bar of 4/4 (a quarter 96), 0 = the shortest time ATK / DEC / REL 0 has. 0-terminated (param_format) */
@@ -557,6 +557,7 @@ static const page_t PAGES[] = {
     {"FILTER", FAM_EDIT, SC_TRACK, GR_NONE, {P_FTYPE, P_FM1_SUS, P_FM1_REL, P_FM1_LEVEL}, 20},   /* CHIP's */
     {"OSC ENV", FAM_EDIT, SC_TRACK, GR_NONE, {P_FM2_ATK, P_FM2_DEC, P_FM2_REL, P_FM3_REL}, 14},   /* WTSYNTH's: A D TO POS TO MIX */
     {"FILTER", FAM_EDIT, SC_TRACK, GR_NONE, {P_FTYPE, P_FM1_SUS, P_FM1_REL, P_FM1_LEVEL}, 14},   /* WTSYNTH's */
+    {"FILTER 2", FAM_EDIT, SC_TRACK, GR_NONE, {P_FM3_ATK, 0xFF, 0xFF, 0xFF}, 14},   /* WTSYNTH's: DRIVE */
     /* FMDRUM's (eng_fmdrum.c), own = 18 */
     {"RATIOS", FAM_EDIT, SC_TRACK, GR_NONE, {P_FM1_ATK, P_FM1_DEC, P_FM1_REL, P_FM1_SUS}, 18},
     {"FM MOD", FAM_EDIT, SC_TRACK, GR_NONE, {P_FM2_ATK, P_FM2_DEC, P_FM2_REL, 0xFF}, 18},
