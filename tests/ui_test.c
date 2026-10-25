@@ -1222,10 +1222,11 @@ static int test_display_preferences(void)
                  settings.palette == 6 && T_BG == UI_PALETTES[6].bg && ux.light && ui.menu == 1 && !song.octave &&
                  memcmp(before, host_screen, sizeof before) && !memcmp(sounds, trk, sizeof sounds));
     turn(EN_K1, 1);
-    bad += check("COLOR KNOB 1 steps on to HI-CON, NIGHT (#50: true black), MONO (1.0.2: black and white), then wraps to GREY",
+    bad += check("COLOR KNOB 1 steps on to HI-CON, NIGHT (#50: true black), MONO (1.0.2: black and white), NVISION (mini-vision), then wraps to GREY",
                  settings.palette == 7 && (turn(EN_K1, 1), settings.palette == 8u) && T_BG == 0u &&
                  str_eq(UI_PALETTES[8].name, "NIGHT") && (turn(EN_K1, 1), settings.palette == UI_BW_INDEX) &&
                  str_eq(UI_PALETTES[UI_BW_INDEX].name, "MONO") && T_BG == 0u && T_TEXT == 0xFFFFu &&
+                 (turn(EN_K1, 1), settings.palette == UI_NVISION_INDEX) && str_eq(UI_PALETTES[UI_NVISION_INDEX].name, "NVISION") &&
                  (turn(EN_K1, 1), settings.palette == UI_GREY_INDEX) && str_eq(UI_PALETTES[UI_GREY_INDEX].name, "GREY"));
     settings.lowcut = 2;
     ui.menu_sel = MI_LOWCUT;
@@ -7248,7 +7249,7 @@ static uint16_t lg_px(int32_t x, int32_t y) { return swap16(host_screen[y * 240 
 static int lg_value_rows(uint32_t c)                    /* rows of card c's value band holding the value's colour */
 {
     int32_t x, y, n = 0;
-    for (y = Y_LABEL + 40; y < Y_LABEL + 76; y++)
+    for (y = (int32_t)label_y() + 40; y < (int32_t)label_y() + 76; y++)
         for (x = CARD_X(c); x < CARD_X(c) + CARD_W; x++)
             if (lg_px(x, y) == T_THEME) { n++; break; }
     return n;
@@ -7280,12 +7281,12 @@ static int test_large(void)
     /* HOME: tall cards (rows 28..132) and the strip (136..198); the footer as it was */
     frame();
     ok = ui.home && large_kind() == LK_TALL && card_h() == LG_CARD_H && graph_y() == LG_Y_GRAPH && strip_kind() == SK_SCOPE;
-    ok &= lg_px(30, Y_SEP_END + 1) == T_SURF && off[(Y_SEP_END + 1) * 240 + 30] == swap16(T_BG);     /* a card where the gap was */
-    ok &= lg_px(30, LG_Y_GRAPH - 2) == T_BG && off[(LG_Y_GRAPH - 2) * 240 + 30] == swap16(T_SURF);   /* a gap in the panel */
+    ok &= lg_px(30, 190) == T_SURF && off[190 * 240 + 30] == swap16(T_BG);     /* a card where the footer's bottom was */
+    ok &= lg_px(30, LG_Y_GRAPH + LG_H_GRAPH + 1) == T_BG && off[(LG_Y_GRAPH + LG_H_GRAPH + 1) * 240 + 30] == swap16(T_SURF);   /* a gap in the panel */
     ok &= lg_px(30, LG_Y_GRAPH + 1) == T_SURF;
     for (c = 0; c < 4u; c++)                                      /* each column's K pill, over its knob */
-        ok &= lg_px(CARD_X(c) + 8, Y_LABEL + LG_MY + LG_MH / 2) == T_KEY;
-    ok &= !memcmp(off + Y_FOOT * 240, host_screen + Y_FOOT * 240, 240u * H_FOOT * sizeof *off);
+        ok &= lg_px(CARD_X(c) + 8, label_y() + LG_MY + LG_MH / 2) == T_KEY;
+    ok &= !memcmp(off + Y_FOOT * 240, host_screen + LG_Y_FOOT * 240, 240u * H_FOOT * sizeof *off);
     bad += check("#15 LARGE ON: HOME's cards tall (a K1..K4 pill over each column), the scope a strip, the footer kept", ok);
 
     /* the value in L: CLOCK's BPM 124 stands about twice as tall as in M */
@@ -7302,7 +7303,7 @@ static int test_large(void)
     turn(EN_K2, 3);
     {
         int32_t x, y, diff[4] = {0, 0, 0, 0};
-        for (y = Y_LABEL; y < Y_LABEL + LG_CARD_H; y++)
+        for (y = (int32_t)label_y(); y < (int32_t)label_y() + LG_CARD_H; y++)
             for (c = 0; c < 4u; c++)
                 for (x = CARD_X(c); x < CARD_X(c) + CARD_W; x++)
                     diff[c] += off[y * 240 + x] != host_screen[y * 240 + x];
@@ -7321,7 +7322,7 @@ static int test_large(void)
     btn_down(B_GLO); frames(800);
     ok &= ui.layer && large_kind() == LK_LABEL && card_h() == CARD_H;
     btn_up(B_GLO); frame(); frame();
-    ok &= !ui.layer && large_kind() == LK_TALL && lg_px(30, LG_Y_GRAPH - 2) == T_BG;
+    ok &= !ui.layer && large_kind() == LK_TALL && lg_px(30, LG_Y_GRAPH + LG_H_GRAPH + 1) == T_BG;
     bad += check("#15 LARGE: PRESETS and the roll keep the layout (labels in M), the layers too; MIXER tall, its tracks in the strip", ok);
 
     {   /* saved with the settings; settings from before it: OFF (and so again: idempotent) */
@@ -7337,7 +7338,7 @@ static int test_large(void)
         q = p;
         ok &= settings_import(&q, (int)sizeof q) == 1 && !ui_prefs;
         ui.force = 1; frame();
-        ok &= large_kind() == LK_OFF && lg_px(30, Y_SEP_END + 1) == T_BG;
+        ok &= large_kind() == LK_OFF && lg_px(30, 190) == T_BG;
         bad += check("#15 LARGE saved with the settings; settings from before it: OFF (idempotent)", ok);
     }
     ui_prefs = 0;
@@ -7460,10 +7461,10 @@ static int test_style(void)
         ok = settings_import(&p, (int)sizeof p) == 1 && ui_style == ST_LINE;
         frame();
         ok &= ux.style == ST_LINE;
-        p.favorites.factory[15][29] = 7;                /* unknown: FLAT, and so again */
-        ok &= settings_import(&p, (int)sizeof p) == 1 && ui_style == ST_FLAT && !p.favorites.factory[15][29];
+        p.favorites.factory[15][29] = 7;                /* unknown (blank flash): LINE, the mini-vision look, and so again */
+        ok &= settings_import(&p, (int)sizeof p) == 1 && ui_style == ST_LINE && p.favorites.factory[15][29] == ST_LINE;
         q = p;
-        ok &= settings_import(&q, (int)sizeof q) == 1 && ui_style == ST_FLAT && !memcmp(&p, &q, sizeof p);
+        ok &= settings_import(&q, (int)sizeof q) == 1 && ui_style == ST_LINE && !memcmp(&p, &q, sizeof p);
         p.favorites.factory[15][29] = 2;                /* the retired PIXEL: LINE, and so again */
         ok &= settings_import(&p, (int)sizeof p) == 1 && ui_style == ST_LINE && p.favorites.factory[15][29] == ST_LINE;
         q = p;
@@ -7479,7 +7480,7 @@ static int test_style(void)
         ok &= settings_import(&p, (int)(sizeof p - sizeof p.favorites)) == 2 && ui_style == ST_FLAT;
         frame();
         ok &= ux.style == ST_FLAT && ux.surf != ux.bg;
-        bad += check("  STYLE saved with the settings and read back; older settings and unknown values: FLAT, PIXEL: LINE (idempotent)", ok);
+        bad += check("  STYLE saved with the settings and read back; older settings: FLAT; unknown values, PIXEL: LINE (idempotent)", ok);
     }
     ui_power_on(); frame();
     return bad;
@@ -8139,9 +8140,9 @@ static int test_home_tracks(void)
     int16_t v0;
     ui_power_on();
     memcpy(before, favorites.factory[15], 32);
-    ok = ui_home_view == 0u && !home_tracks() && menu_get(MI_HOME) == 0u && menu_n(MI_HOME) == 3u &&
-         str_eq(MI_NAME[MI_HOME], "HOME") && str_eq(menu_vname(MI_HOME, 0), "SCOPE") &&
-         str_eq(menu_vname(MI_HOME, 1), "TRACKS") && str_eq(menu_vname(MI_HOME, 2), "LEVELS") &&   /* (1.5: LEVELS) */
+    ok = ui_home_view == 0u && !home_tracks() && menu_get(MI_HOME) == 0u && menu_n(MI_HOME) == 4u &&
+         str_eq(MI_NAME[MI_HOME], "HOME") && str_eq(menu_vname(MI_HOME, 0), "PERFORM") &&
+         str_eq(menu_vname(MI_HOME, 1), "TRACKS") && str_eq(menu_vname(MI_HOME, 2), "LEVELS") && str_eq(menu_vname(MI_HOME, 3), "SCOPE") &&   /* (1.5: LEVELS) */
          MI_TAB[MI_HOME] == MTAB_DISPLAY && MI_HOME < MI_VALUES;
     menu_put(MI_HOME, 1);
     ok &= ui_home_view == 1u && home_tracks() && menu_get(MI_HOME) == 1u;
@@ -8163,8 +8164,10 @@ static int test_home_tracks(void)
     for (i = 0; i < 7u; i++) turn(EN_PRESET, 1);
     ok = ui.menu == 1 && ui.menu_sel == MI_HOME;
     turn(EN_K1, 1); ok &= home_tracks() && !home_levels();
-    turn(EN_K3, 1); ok &= home_levels();               /* (1.5: LEVELS, the last) */
-    turn(EN_K3, 1); ok &= home_levels();               /* (stops there) */
+    turn(EN_K3, 1); ok &= home_levels();               /* (1.5: LEVELS) */
+    turn(EN_K3, 1); ok &= !home_tracks() && ui_home_view == HV_SCOPE;   /* (the last: stops there) */
+    turn(EN_K3, 1); ok &= ui_home_view == HV_SCOPE;
+    press(B_OCTDN); ok &= home_levels();
     press(B_OCTDN); ok &= home_tracks() && !home_levels();
     press(B_OCTDN); ok &= !home_tracks();
     press(B_OCTUP); ok &= home_tracks();

@@ -49,7 +49,13 @@ PALETTES = [
     ("NIGHT",  (0, 0, 0),       (0, 24, 10),     (150, 230, 170), (56, 220, 100),  (255, 255, 255)),
     # 1.0.2: black and white (the derived tokens are set, not blended: bw()); the old MONO is GREY (id 0)
     ("MONO",   (0, 0, 0),       (0, 0, 0),       (255, 255, 255), (255, 255, 255), (255, 255, 255)),
+    # mini-vision: after the n/vision-style design (docs/UI_DESIGN.md): near-black navy, a cool white, cyan for layer 1 and the values,
+    # yellow for the one active thing; layer 2 is pink, playing green, a warning orange (EXTRA)
+    ("NVISION", (11, 12, 16),    (21, 23, 31),    (232, 234, 240), (47, 212, 230),  (255, 210, 63)),
 ]
+# the colours that only some palettes name (the rest of them: l2 = ACCENT, ok = THEME, warn = ACCENT): layer 2 / a second voice,
+# playing and healthy, a warning
+EXTRA = {"NVISION": {"l2": (255, 95, 162), "ok": (124, 227, 139), "warn": (255, 138, 92)}}
 BW = "MONO"
 BW_GREY = (82, 82, 82)             # MONO's one mid grey (RGB565 10/20/10): DIM LINE RAISE LANE
 # the 20 palettes of the earlier firmware (index order) -> the new palette
@@ -125,6 +131,10 @@ def derive(p):
              tint=mix(bg, theme, PCT["TINT"], mono), raise_=mix(surf, text, RAISE_PCT, mono),
              key=mix(bg, text, PCT["KEY"], mono))
     d["ink"] = bg
+    ex = EXTRA.get(name, {})
+    d["l2"] = to565(ex["l2"]) if "l2" in ex else accent
+    d["ok"] = to565(ex["ok"]) if "ok" in ex else theme
+    d["warn"] = to565(ex["warn"]) if "warn" in ex else accent
     d["light"] = luma(bg) > 128
     d["rec"] = accent if mono or name == BW else to565(REC_LIGHT if d["light"] else REC_DARK)
     if name == BW:                     # src/gfx.c palette_set: set, not blended
@@ -144,7 +154,8 @@ CHECKS = [("text", "bg", 12.0, "body text"), ("text", "surf", 9.0, "body text on
           ("text", "raise_", 7.0, "text on a RAISE chip or button"), ("ink", "rec", 4.5, "text on the REC chip"),
           ("ink", "key", 4.5, "a keycap's label"), ("key", "bg", 3.0, "a keycap on the background"),
           ("key", "surf", 2.5, "a keycap on a surface"), ("ink", "dim", 1.8, "an unavailable keycap's label"),
-          ("ink", "accent", 4.5, "text on the ARM badge")]
+          ("ink", "accent", 4.5, "text on the ARM badge"), ("l2", "bg", 4.5, "layer 2's curves and values"),
+          ("ok", "bg", 4.5, "playing"), ("warn", "bg", 4.5, "a warning")]
 
 
 def main():
@@ -160,6 +171,11 @@ def main():
             for k, v in d.items():
                 if k == "light":
                     continue
+                if not (v >> 11 == v & 31 and ((v >> 5) & 63) == (v >> 11) << 1):
+                    fails.append(f"{name} is not grayscale: {k} = {v:#06x}")
+        if name == "GREY":
+            for k in ("l2", "ok", "warn"):
+                v = d[k]
                 if not (v >> 11 == v & 31 and ((v >> 5) & 63) == (v >> 11) << 1):
                     fails.append(f"{name} is not grayscale: {k} = {v:#06x}")
         if name == BW:                 # every token pure black or white, or the one grey (DIM LINE RAISE LANE)
@@ -186,8 +202,13 @@ def main():
             out.append(f'    {{"{p[0]}", ' + ", ".join(f"0x{x:04x}" for x in v) + "},")
         out += ["};", f"#define UI_NPALETTES {len(PALETTES)}u", "#define UI_GREY_INDEX 0u",
                 f"#define UI_BW_INDEX {names.index(BW)}u          /* MONO: black and white (src/gfx.c palette_set) */",
+                f"#define UI_NVISION_INDEX {names.index('NVISION')}u      /* mini-vision's own look, the default */",
                 f"#define UI_BW_GREY 0x{to565(BW_GREY):04x}u          /* MONO's one grey: DIM LINE RAISE LANE */",
                 f"#define UI_PAL_TAG {PAL_TAG}u          /* stored id = UI_PAL_TAG + index; below 20: an old id */"]
+        out += ["", "/* the colours of EXTRA per palette: {l2, ok, warn} (src/gfx.c T_L2 T_OK T_WARN) */", "static const uint16_t UI_PAL_X[][3] = {"]
+        for name, d in rows:
+            out.append(f"    {{0x{d['l2']:04x}, 0x{d['ok']:04x}, 0x{d['warn']:04x}}},   /* {name} */")
+        out += ["};", ""]
         out += [f"#define UI_{k}_PCT {v}" for k, v in PCT.items()] + [f"#define UI_RAISE_PCT {RAISE_PCT}   /* SURF -> TEXT */"]
         out += [f"#define UI_REC_DARK 0x{to565(REC_DARK):04x}u", f"#define UI_REC_LIGHT 0x{to565(REC_LIGHT):04x}u",
                 f"#define UI_QR_LIGHT 0x{to565(QR_LIGHT):04x}u", f"#define UI_QR_DARK 0x{to565(QR_DARK):04x}u",

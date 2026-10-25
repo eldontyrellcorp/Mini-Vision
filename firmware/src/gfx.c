@@ -82,7 +82,7 @@ static uint8_t cv_flip;          /* cv_alpha_hc: the cell mirrored left <-> righ
 /* Five stored colours per palette, the rest derived with fixed blends (tools/gen_ui_palettes.py) */
 static struct {
     uint16_t bg, surf, text, theme, accent;
-    uint16_t mid, dim, line, sel, tint, ink, rec, raise, key, lane, grid;
+    uint16_t mid, dim, line, sel, tint, ink, rec, raise, key, lane, grid, l2, ok, warn;
     uint8_t light, mono;
     uint8_t style;               /* MENU > STYLE (ui.c style_apply): ST_FLAT, ST_LINE */
     uint32_t gen;                /* bumped by palette_set (the text ramps follow) */
@@ -107,6 +107,9 @@ static struct {
 #define T_REC ux.rec             /* REC: fixed red (GREY, MONO: the accent) */
 #define T_RAISE ux.raise         /* a raised area on a surface: stubs, guides, slots, chips, button wells */
 #define T_KEY ux.key             /* a keycap's fill (its label: T_INK; unavailable: a T_DIM fill) */
+#define T_L2 ux.l2               /* a second voice: layer 2's curves and values (NVISION: pink; the others: the accent) */
+#define T_OK ux.ok               /* playing, healthy (NVISION: green; the others: the theme) */
+#define T_WARN ux.warn           /* a warning, a heavy setting (NVISION: orange; the others: the accent) */
 #define T_LANE ux.lane           /* the piano roll: an in-scale row (SURF -> THEME 10 %) */
 #define T_GRID ux.grid           /* the piano roll: a step line (SURF -> TEXT 6 %; beats and C rows: RAISE) */
 #define NPALETTES UI_NPALETTES
@@ -148,6 +151,7 @@ static void palette_set(uint32_t i)
     ux.key = ux_mix(p->bg, p->text, UI_KEY_PCT);
     ux.lane = ux_mix(ux.surf, p->theme, 10);
     ux.grid = ux_mix(ux.surf, p->text, 6);
+    ux.l2 = UI_PAL_X[i][0]; ux.ok = UI_PAL_X[i][1]; ux.warn = UI_PAL_X[i][2];
     ux.light = ux_luma(p->bg) > 128u;
     ux.rec = ux.mono ? p->accent : ux.light ? UI_REC_LIGHT : UI_REC_DARK;
     if (i == UI_BW_INDEX) {                      /* MONO: black and white, set, not blended (tools/gen_ui_palettes.py) */

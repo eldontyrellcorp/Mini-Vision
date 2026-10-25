@@ -329,6 +329,10 @@ static uint32_t name_leds(void)
  * or a hint, and ABC / 123; the white keys as two rows of 8 pills (the left octave, then the right one; the
  * cycling key THEME); the black keys' functions as five KEY cells under their names. The footer: OCT+ / OCT-,
  * then the knobs and the keys */
+/* the NAME screen keeps Mini-Tone's order: the name field 28..72, the keys 76..198, the footer 202..240 */
+#define NM_Y_FIELD 28
+#define NM_Y_PANEL 76
+#define NM_Y_FOOT 202
 #define NM_CX(i) (12 + 18 * (int32_t)(i))              /* cell i: 18 x 22 at y 18 of the card */
 static void nm_title(char *b)
 {
@@ -375,7 +379,7 @@ static void nm_draw_field(void)
     }
     if (nm.cur >= NM_LEN)                              /* full, the cursor past the end: a bar */
         cv_rrect(NM_CX(NM_LEN) + 1, 18, 3, 22, 1, T_ACCENT, T_SURF);
-    cv_blit(0, Y_LABEL);
+    cv_blit(0, NM_Y_FIELD);
 }
 static void nm_draw_panel(void)
 {
@@ -426,7 +430,7 @@ static void nm_draw_panel(void)
             cv_text_in(x, y + 18, 42, &AF_S, i == NB_SPACE ? "SPACE" : i == NB_DEL ? "DEL" : nm.num ? "ABC" : "123",
                       T_INK, T_KEY);
     }
-    cv_blit(0, Y_GRAPH);
+    cv_blit(0, NM_Y_PANEL);
 }
 static void nm_draw_foot(void)
 {
@@ -441,7 +445,7 @@ static void nm_draw_foot(void)
     cv_begin(240, H_FOOT, T_BG);
     cv_key_row(8, 232, 2, a, 3, ok ? 7u : 6u, T_BG);
     cv_key_row(8, 232, 21, b, 3, 7u, T_BG);
-    cv_blit(0, Y_FOOT);
+    cv_blit(0, NM_Y_FOOT);
 }
 static void name_draw(void)
 {

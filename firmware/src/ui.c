@@ -82,7 +82,7 @@ static uint32_t up_gen;                      /* bumped on every user bank change
  * engine uses, saved with the settings; 0 in older settings = SCOPE; an unknown value (a later firmware's view) reads as
  * SCOPE and is kept as saved (1.3 / 1.4 read LEVELS so) */
 #define ui_home_view (favorites.factory[15][26])
-enum { HV_SCOPE, HV_TRACKS, HV_LEVELS, HV_COUNT };
+enum { HV_PERFORM, HV_TRACKS, HV_LEVELS, HV_SCOPE, HV_COUNT };   /* (mini-vision: PERFORM is the default) */
 static int home_tracks(void) { return ui_home_view == HV_TRACKS || ui_home_view == HV_LEVELS; }
 static int home_levels(void) { return ui_home_view == HV_LEVELS; }
 enum { RP_CLICK, RP_LEVEL, RP_COUNTIN };
@@ -115,24 +115,26 @@ static uint8_t sync_reload;                  /* engine / preset / project / user
 #define ACC T_THEME                /* values, curves */
 #define VAL(c) ((c) == ui.hot_col && ui.hot_t ? T_ACCENT : T_THEME)   /* the knob just turned: accent */
 #define RATIO(d, v) ((d)->max > (d)->min ? ((int32_t)(v) - (d)->min) * 1000 / ((d)->max - (d)->min) : -1)
-/* layout: header 0..24, four cards 28..72 (57 px at x 3 + 59 c),
- * the panel 76..198 (a SURF area; the graphs live in it), footer 202..240; BG between them */
+/* layout (mini-vision, after the n/vision-style design, docs/UI_DESIGN.md): header 0..24, the panel 28..150 (a SURF area; the
+ * graphs live in it), the footer 154..192 (the sound's name, its page), the four knob cards at the bottom 196..240 (57 px at
+ * x 3 + 59 c); BG between them. (Mini-Tone had the cards under the header and the footer at the bottom) */
 #define Y_HEAD 0
 #define H_HEAD 24
-#define Y_LABEL 28                    /* the cards */
-#define Y_SEP_END 72
 #define CARD_W 57
 #define CARD_H 44
+#define Y_LABEL (240 - CARD_H)        /* the cards */
+#define Y_SEP_END 240
 #define CARD_X(c) (3 + 59 * (int32_t)(c))
-#define Y_GRAPH 76                    /* the panel */
+#define Y_GRAPH 28                    /* the panel */
 #define H_GRAPH 122
-#define Y_FOOT 202
+#define Y_FOOT 154
 #define H_FOOT 38
-/* MENU > LARGE (large_kind below): on the value pages the cards are tall (28..132) and the panel a strip
- * (136..198); elsewhere (lists, rolls, layers) the layout above, its card labels in M */
+/* MENU > LARGE (large_kind below): on the value pages the cards are tall (136..240) and the panel a strip
+ * (28..90) with the footer under it (94..132); elsewhere (lists, rolls, layers) the layout above, its card labels in M */
 #define LG_CARD_H 104
-#define LG_Y_GRAPH 136
+#define LG_Y_GRAPH 28
 #define LG_H_GRAPH 62
+#define LG_Y_FOOT 94
 
 static struct {
     uint8_t home;
@@ -367,6 +369,8 @@ static uint32_t large_kind(void)
 static uint32_t card_h(void) { return large_kind() == LK_TALL ? LG_CARD_H : CARD_H; }
 static uint32_t graph_y(void) { return large_kind() == LK_TALL ? LG_Y_GRAPH : Y_GRAPH; }
 static uint32_t graph_h(void) { return large_kind() == LK_TALL ? LG_H_GRAPH : H_GRAPH; }
+static uint32_t label_y(void) { return 240u - card_h(); }              /* the cards' top */
+static uint32_t foot_y(void) { return large_kind() == LK_TALL ? LG_Y_FOOT : Y_FOOT; }
 static int large_face_has(const char *s)                /* every glyph of s in the sparse L face */
 {
     for (; *s; s++)

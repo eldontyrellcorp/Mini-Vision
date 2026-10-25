@@ -718,7 +718,7 @@ static int menu_protocol(void)
         {"SCREEN OFF", "NEVER,5 MIN,15 MIN,30 MIN,60 MIN"},
         {"SCOPE", "OUT,MIX"}, {"STEP PREVIEW", "OFF,ON"}, {"CHORD ENTRY", "HOLD,ADD"},                  /* (1.2) */
         {"MIDI IN", "CH1-6,SEL,CH5-10,CH9-14,CH13-16"}, {"TUNE", 0},   /* (1.2: the project's ROUT and TUNE; TUNE a number) */
-        {"HOME", "SCOPE,TRACKS,LEVELS"},                                                       /* (1.3; 1.5: LEVELS) */
+        {"HOME", "PERFORM,TRACKS,LEVELS,SCOPE"},                                                       /* (1.3; 1.5: LEVELS) */
         {"HELP", "OFF,ON"},                                                                          /* (1.5) */
         {"PING PONG", "ON,OFF"}, {"DLY HALF", "OFF,ON"},                                             /* (the delay's, AUDIO) */
         {"SELECT", "TEMPO,PAGES"}};                                                                  /* (CONTROL) */

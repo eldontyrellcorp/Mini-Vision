@@ -439,10 +439,10 @@ static void draw_gaps(uint32_t y, uint32_t h)
 static void draw_frame(void)
 {
     uint32_t ch = card_h(), gy = graph_y(), gh = graph_h();   /* (MENU > LARGE: tall cards, a strip) */
-    gap_rows(H_HEAD, Y_LABEL);
-    gap_rows(Y_LABEL + ch, gy);
-    gap_rows(gy + gh, Y_FOOT);
-    draw_gaps(Y_LABEL, ch);
+    gap_rows(H_HEAD, gy);
+    gap_rows(gy + gh, foot_y());
+    gap_rows(foot_y() + H_FOOT, label_y());
+    draw_gaps(label_y(), ch);
 }
 
 #ifndef CARD_HOOK
@@ -492,7 +492,7 @@ static void draw_column_tall(uint32_t c, const char *label, const char *val, con
         cv_text_in(5, LG_MY + CAP_IN(M, LG_MH), mw, &AF_M, k, T_INK, fill);
     }
     if (!label[0] && !val[0]) {                         /* a knob that does nothing on this page */
-        cv_blit((uint32_t)CARD_X(c), Y_LABEL);
+        cv_blit((uint32_t)CARD_X(c), label_y());
         return;
     }
     if (FELUCCA_ICONS && ic != ICON_NONE && label[0] && (ic - ICON_TRK < NTRK || icon_cell(&isz, ic) >= 0)) {
@@ -545,7 +545,7 @@ static void draw_column_tall(uint32_t c, const char *label, const char *val, con
         cv_rrect(5, LG_GY, gw, 3, 1, ux.style ? T_LINE : T_BG, T_SURF);
         cv_rrect(5, LG_GY, fx < 3 ? 3 : fx, 3, 1, hot ? T_ACCENT : vc == T_DIM ? T_DIM : T_THEME, T_BG);
     }
-    cv_blit((uint32_t)CARD_X(c), Y_LABEL);
+    cv_blit((uint32_t)CARD_X(c), label_y());
 }
 
 /* one card = one knob: [icon] LABEL / value unit / gauge on a SURF card, redrawn only when it changed.
@@ -676,7 +676,7 @@ static void draw_column(uint32_t c, const char *label, const char *val, const ch
         }
     }
     cv_oy = 0;
-    cv_blit((uint32_t)CARD_X(c), Y_LABEL + (strip ? ROLL_Y : 0));
+    cv_blit((uint32_t)CARD_X(c), label_y() + (strip ? ROLL_Y : 0));
 }
 
 /* an action's column (act_cols): picked, the OCT+ keycap (accent while it would do something); else "--" */
@@ -846,7 +846,7 @@ static void draw_foot(void)
         }
         cv_text_r(r, 19, &AF_S, ti, T_MID, T_BG);
     }
-    cv_blit(0, Y_FOOT);
+    cv_blit(0, foot_y());
 }
 /* the EDIT layer's cards (ui_layer.c): ENG (the engine), No. (its sounds: KNOB 2's list), FAV, an empty card */
 static void engine_columns(void)
@@ -1442,7 +1442,7 @@ static void draw_confirm(void)
 static void style_apply(void)
 {
     if (ui_style > ST_LINE)                             /* 2, the retired PIXEL: LINE; unknown: FLAT */
-        ui_style = ui_style == 2u ? ST_LINE : ST_FLAT;
+        ui_style = ST_LINE;
     if (ux.style != ui_style) {
         ux.style = ui_style;
         palette_set(settings.palette);

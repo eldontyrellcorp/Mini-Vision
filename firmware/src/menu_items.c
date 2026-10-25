@@ -118,7 +118,7 @@ static const char *const SCROFF_N[5] = {"NEVER", "5 MIN", "15 MIN", "30 MIN", "6
 static const char *const ANIM_N[3] = {"ON", "OFF", "IDLE"};
 static const uint8_t ANIM_ORD[3] = {1, 0, 2};          /* (a value's place in the menu's order, and back: its own inverse) */
 /* 1.3 (Discussions #112, #134): what HOME shows under its cards (ui.c ui_home_view): the scope, or the four tracks */
-static const char *const HOME_N[HV_COUNT] = {"SCOPE", "TRACKS", "LEVELS"};   /* (1.5, #134: LEVELS) */
+static const char *const HOME_N[HV_COUNT] = {"PERFORM", "TRACKS", "LEVELS", "SCOPE"};   /* (1.5, #134: LEVELS) */
 
 /* MENU > USB SERIAL (#67). The serial console is a developer tool (README: FELUCCA_CDC). ON (the default) presents it,
  * the descriptors byte for byte as before; OFF re-enumerates as audio + MIDI only, device class 0 (the bytes of a
@@ -167,7 +167,7 @@ static uint32_t menu_get(uint32_t row)
     case MI_HOLD: return settings_hold % 4u;
     case MI_SCROFF: return scr_get();
     case MI_ANIM: return ui_prefs & PREF_ANIM_OFF ? 1u : (ui_idle & 1u) ? 2u : 0u;
-    case MI_HOME: return ui_home_view < HV_COUNT ? ui_home_view : HV_SCOPE;
+    case MI_HOME: return ui_home_view < HV_COUNT ? ui_home_view : HV_PERFORM;
     case MI_CLICK: case MI_CLKLVL: case MI_COUNTIN: return rp_get(row - MI_CLICK);
     case MI_TUNE: return (uint32_t)(clamp(song.g[G_TUNE], TUNE_MIN, TUNE_MIN + (int32_t)TUNE_N - 1) - TUNE_MIN);
     case MI_MIDIIN: return (uint32_t)clamp(song.g[G_ROUTE], 0, (int32_t)NELEM(N_ROUTE) - 1);
@@ -242,7 +242,7 @@ static void menu_put(uint32_t row, uint32_t v)
         ui_idle = (uint8_t)(v == 2u ? ui_idle | 1u : ui_idle & ~1u);
         break;                                         /* (1.5: up to 1.4.1 it fell through: ANIM set HOME too) */
     case MI_HOME:                                      /* (another look: HOME drawn anew) */
-        ui_home_view = (uint8_t)(v < HV_COUNT ? v : HV_SCOPE);
+        ui_home_view = (uint8_t)(v < HV_COUNT ? v : HV_PERFORM);
         ui.force = 1;
         break;
     case MI_LEDS: settings_leds = LEDS_MENU[v]; break;

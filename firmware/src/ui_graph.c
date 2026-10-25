@@ -2055,6 +2055,59 @@ static void graph_wt(const track_t *t, uint16_t c)
     }
 }
 
+static void sound_name(const track_t *t, char *b);
+/* HOME > PERFORM (the n/vision look): the patch number and name, the engine line, the layers' frame stack with the frame at
+ * POSITION lit (layer 2 overlaid), the layer bar and a row of chips */
+static void graph_perform(const track_t *t)
+{
+    char nm[16], b[24];
+    int32_t pos = clamp(t->p[P_E2], 0, 127), mix = clamp(t->p[P_E3], 0, 127), x, k, W = 234, X0 = 3, bx, bw = 140;
+    uint32_t w[2] = {(uint32_t)clamp(t->p[P_E0], 1, 63) - 1u, (uint32_t)clamp(t->p[P_E1], 1, 63) - 1u}, cur;
+    static const char *const FT[9] = {"LP12", "BP12", "HP12", "LP24", "BP24", "HP24", "R-VNT", "M-VNT", "S-VNT"};
+    sound_name(t, nm);
+    if (t->eng_req % NENGINES != ENGI_WT) {          /* (the drum engine: just its name) */
+        cv_text_on(X0 + 6, 6, &AF_M, nm, T_TEXT, T_SURF);
+        return;
+    }
+    fmt_int(b, (int32_t)t->preset + 1);
+    cv_text_on(X0 + 6, 4, &AF_M, b, T_ACCENT, T_SURF);
+    cv_text_on(X0 + 6 + text_w(&AF_M, b) + 6, 4, &AF_M, nm, T_TEXT, T_SURF);
+    cv_text_on(X0 + 6, 22, &AF_S, "WAVETABLE  DUAL  SEQ", T_MID, T_SURF);
+    fmt_int(b, pos);
+    cv_text_r(X0 + W - 6, 4, &AF_M, b, T_THEME, T_SURF);
+    cur = (uint32_t)(pos * (int32_t)(NV_NFRAME - 1u) + 63) / 127u;
+    bx = X0 + 10;                                    /* the frame stack: a slanted pile of the layer-1 waveform */
+    for (k = (int32_t)NV_NFRAME - 1; k >= 0; k--) {
+        const int8_t *a = NV_TAB[0] + (w[0] * NV_NFRAME + (uint32_t)k) * ((1u << NV_LEN_LOG2[0]) + 1u);
+        const int8_t *c2 = NV_TAB[0] + (w[1] * NV_NFRAME + (uint32_t)k) * ((1u << NV_LEN_LOG2[0]) + 1u);
+        int32_t oy = 70 + k * 3, ox = bx + (int32_t)(NV_NFRAME - 1 - (uint32_t)k) * 4, py = 0, py2 = 0, ww = 150;
+        int hot = (uint32_t)k == cur;
+        for (x = 0; x < ww; x++) {
+            uint32_t i = (uint32_t)x * (1u << NV_LEN_LOG2[0]) / (uint32_t)ww;
+            int32_t y = oy - (a[i] * 12 >> 7), y2 = oy - (c2[i] * 12 >> 7);
+            if (x) {
+                if (hot && mix > 8)
+                    cv_line_t(ox + x - 1, py2, ox + x, y2, T_L2, 1);
+                cv_line_t(ox + x - 1, py, ox + x, y, hot ? T_THEME : T_RAISE, hot ? 2 : 1);
+            }
+            py = y;
+            py2 = y2;
+        }
+    }
+    cv_text_on(X0 + 6, 96, &AF_S, "L1", T_THEME, T_SURF);
+    cv_text_on(X0 + 22, 96, &AF_S, NV_NAME[w[0]], T_TEXT, T_SURF);
+    cv_text_r(X0 + W - 22, 96, &AF_S, NV_NAME[w[1]], T_TEXT, T_SURF);
+    cv_text_r(X0 + W - 6, 96, &AF_S, "L2", T_L2, T_SURF);
+    bx = X0 + 6;                                     /* the chips: filter type, drive, layer balance */
+    str_cpy(b, FT[clamp(t->p[P_FTYPE], 0, 8)], sizeof b);
+    cv_rrect(bx, 108, text_w(&AF_S, b) + 10, 13, 2, T_RAISE, T_SURF);
+    cv_text_on(bx + 5, 108, &AF_S, b, T_THEME, T_RAISE);
+    bx += text_w(&AF_S, b) + 16;
+    str_cpy(b, "MIX ", sizeof b);
+    fmt_int(b + 4, mix);
+    cv_text_on(bx, 108, &AF_S, b, T_MID, T_SURF);
+}
+
 static void draw_graph(void)
 {
     const page_t *pg = cur_page();
@@ -2088,7 +2141,8 @@ static void draw_graph(void)
         graph_ht = 100;
     } else if (ui.home) {
         cv_oy = 0;
-        graph_scope(c);
+        if (ui_home_view == HV_PERFORM) graph_perform(t);
+        else graph_scope(c);
     } else {
         switch (pg->graph) {
         case GR_ADSR:
