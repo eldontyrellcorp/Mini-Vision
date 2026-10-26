@@ -31,7 +31,6 @@ follows are gathered in `docs/NVISION_SPECS.md`; Mini-Tone's own release notes a
   STEP 2, PATTERN, AUTOMATION, MOTION and STOCH.
 - **Not yet** (the n/vision has them): the HPF, the wave shaper's tables, P-MOD's X / Y, the step LFO, the drawing mode, SPREAD, the EQ, the MFX
   effects, 56 voices (8 here). The web editor (`web/`) is still Mini-Tone's, with FM6 and the other engines in it.
-- **Flash:** the app slot is 568.7 kB of 581.6 (12.9 kB left); the wavetables take 252 kB of the store region.
 - **TR808 fix:** a tom, or the kick at a low TUNE and a long DECY, could settle into a limit cycle that never ended and kept its voice in
   the budget of 8; the voices now end late in a hit (`T8_TOM_TAIL_X`, `T8_BD_TAIL_QX`).
 
