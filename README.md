@@ -1,8 +1,17 @@
 # mini-vision
 
-**mini-vision 1.0.0** is a wavetable synthesizer firmware for the M-VAVE FM-1 (JieLi AC79), after Roland's n/vision. It is a fork of
+**mini-vision 1.0.1** is a wavetable synthesizer firmware for the M-VAVE FM-1 (JieLi AC79), after Roland's n/vision. It is a fork of
 Mini-Tone 1.0.4 (Stephane Schmitz), itself based on Felucca 1.5 by Leo Kuroshita (Hügelton Instruments), GPL-3.0-only. The specifications it
 follows are gathered in `docs/NVISION_SPECS.md`; Mini-Tone's own release notes are in `docs/MINI_TONE_HISTORY.md`.
+
+## Changes
+
+- **1.0.1: the ELEK reverb no longer leaves a noise floor.** After a note's reverb had died away, ELEK kept a faint steady noise that HALL, ROOM
+  and SPRING do not have. The cause was rounding in the reverb's feedback loops: a few LSB circulated for ever (a limit cycle, about -84 dB).
+  Below a tiny amplitude (4 LSB, about -96 dB) the loops now round toward zero, so the tail ends in true silence; above it nothing changes and
+  the reverb time stays as set. DEC INF still never decays on its own. `tests/elek_rev_test.c` checks that the last second after a noise
+  burst is exactly zero.
+- **1.0.0:** the first mini-vision release (below).
 
 ## What it is
 
